@@ -108,22 +108,7 @@ button {
   gap: 12px;
 }
 
-.tracker-layout {
-  align-items: flex-start;
-  display: grid;
-  gap: 24px;
-  grid-template-columns: 320px 1fr;
-}
 
-.initiative-column {
-  align-self: start;
-  background: rgba(12, 11, 18, 0.6);
-  border: 1px solid var(--border-soft);
-  border-radius: 16px;
-  padding: 20px;
-  position: sticky;
-  top: 24px;
-}
 
 .panel-head {
   align-items: center;
@@ -138,23 +123,96 @@ button {
   text-transform: uppercase;
 }
 
+.tracker-main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.initiative-bar {
+  background: rgba(12, 11, 18, 0.6);
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.initiative-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.initiative-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.initiative-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
 .initiative-list {
   list-style: none;
   margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  padding: 4px 8px;
+  display: inline-flex;
+  gap: 12px;
+  min-width: max-content;
 }
 
 .initiative-list li {
   border-radius: 12px;
   overflow: hidden;
+  min-width: 220px;
+  padding: 4px;
 }
 
 .initiative-list li.active {
   box-shadow: 0 0 0 1px var(--accent), 0 0 18px rgba(193, 18, 31, 0.4);
 }
+
+.combatant-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.combatant-scroll {
+  display: inline-flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 8px 8px 12px;
+  min-height: 100%;
+}
+
+.combatant-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+
+.combatant-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+.combatant-card-wrapper {
+  flex: 0 0 360px;
+  display: flex;
+  padding: 8px;
+}
+
+.combatant-card-wrapper > .combatant-card {
+  width: 100%;
+}
+
+.combatant-scroll::after {
+  content: "";
+  flex: 0 0 8px;
+}
+
+
+
 
 .initiative-row {
   align-items: center;
@@ -167,6 +225,7 @@ button {
   padding: 12px 16px;
   text-align: left;
   transition: transform 0.2s ease, border 0.2s ease;
+  min-width: 220px;
   width: 100%;
 }
 
@@ -221,11 +280,6 @@ button {
   border: 1px solid rgba(214, 40, 40, 0.4);
 }
 
-.combatant-grid {
-  display: grid;
-  gap: 20px;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-}
 
 .combatant-card {
   background: var(--bg-card);
@@ -603,22 +657,6 @@ button.wide {
   padding: 48px 24px;
 }
 
-@media (max-width: 1024px) {
-  body {
-    padding: 16px;
-  }
-
-  .tracker-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .initiative-column {
-    position: static;
-  }
-}
-
-
-
 @media (max-width: 768px) {
   .card-head {
     grid-template-columns: 48px 1fr;
@@ -699,3 +737,14 @@ button.wide {
     flex: 1 1 100%;
   }
 }
+
+@media (max-width: 1024px) {
+  body {
+    padding: 16px;
+  }
+
+  .tracker-shell {
+    padding: 24px;
+  }
+}
+

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCombatTracker } from '../hooks/useCombatTracker';
 import InitiativeList from './InitiativeList';
 import CombatantCard from './CombatantCard';
@@ -8,10 +8,46 @@ import type { StatusEffectTemplate } from '../types';
 const CombatTracker = () => {
   const { state, actions, presets } = useCombatTracker();
   const [showCreatePanel, setShowCreatePanel] = useState(false);
+  const initiativeScrollRef = useRef<HTMLDivElement | null>(null);
+  const initiativeRefs = useRef(new Map<string, HTMLLIElement>());
+  const combatantScrollRef = useRef<HTMLDivElement | null>(null);
+  const combatantRefs = useRef(new Map<string, HTMLDivElement>());
 
   const handleAddStatus = (combatantId: string, template: StatusEffectTemplate, rounds: number | null, note?: string) => {
     actions.addStatus(combatantId, template, rounds, note);
   };
+
+  const scrollItemIntoView = (container: HTMLElement, element: HTMLElement) => {
+    const containerWidth = container.clientWidth;
+    const containerScroll = container.scrollLeft;
+    const elementLeft = element.offsetLeft;
+    const elementWidth = element.offsetWidth;
+    const elementRight = elementLeft + elementWidth;
+    const containerRight = containerScroll + containerWidth;
+
+    if (elementLeft >= containerScroll && elementRight <= containerRight) {
+      return;
+    }
+
+    const target = elementLeft - (containerWidth - elementWidth) / 2;
+    container.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    if (!state.activeCombatantId) return;
+    const container = initiativeScrollRef.current;
+    const item = initiativeRefs.current.get(state.activeCombatantId);
+    if (!container || !item) return;
+    scrollItemIntoView(container, item);
+  }, [state.activeCombatantId, state.combatants]);
+
+  useEffect(() => {
+    if (!state.activeCombatantId) return;
+    const container = combatantScrollRef.current;
+    const card = combatantRefs.current.get(state.activeCombatantId);
+    if (!container || !card) return;
+    scrollItemIntoView(container, card);
+  }, [state.activeCombatantId, state.combatants]);
 
   return (
     <div className="tracker-shell">
@@ -34,8 +70,8 @@ const CombatTracker = () => {
         </div>
       </header>
 
-      <div className="tracker-layout">
-        <aside className="initiative-column">
+      <div className="tracker-main">
+        <section className="initiative-bar">
           <div className="panel-head">
             <h2>Initiative Order</h2>
             <button
@@ -47,11 +83,20 @@ const CombatTracker = () => {
             </button>
           </div>
 
-          <InitiativeList
-            combatants={state.combatants}
-            activeId={state.activeCombatantId}
-            onSelect={actions.setActiveCombatant}
-          />
+          <div className="initiative-scroll" ref={initiativeScrollRef}>
+            <InitiativeList
+              combatants={state.combatants}
+              activeId={state.activeCombatantId}
+              onSelect={actions.setActiveCombatant}
+              registerItemRef={(id, node) => {
+                if (node) {
+                  initiativeRefs.current.set(id, node);
+                } else {
+                  initiativeRefs.current.delete(id);
+                }
+              }}
+            />
+          </div>
 
           {showCreatePanel && (
             <AddCombatantForm
@@ -66,9 +111,9 @@ const CombatTracker = () => {
           <button type="button" className="ghost wide" onClick={actions.resetEncounter}>
             Reset Encounter
           </button>
-        </aside>
+        </section>
 
-        <section className="combatant-grid">
+        <section className="combatant-strip">
           {state.combatants.length === 0 ? (
             <div className="empty-state">
               <h3>No combatants yet</h3>
@@ -80,21 +125,34 @@ const CombatTracker = () => {
               )}
             </div>
           ) : (
-            state.combatants.map((combatant) => (
-              <CombatantCard
-                key={combatant.id}
-                combatant={combatant}
-                isActive={combatant.id === state.activeCombatantId}
-                onCenter={() => actions.setActiveCombatant(combatant.id)}
-                onDamage={(amount) => actions.applyDelta(combatant.id, amount)}
-                onHeal={(amount) => actions.applyDelta(combatant.id, -amount)}
-                onRemove={() => actions.removeCombatant(combatant.id)}
-                onUpdate={(changes) => actions.updateCombatant(combatant.id, changes)}
-                onAddStatus={(template, rounds, note) => handleAddStatus(combatant.id, template, rounds, note)}
-                onRemoveStatus={(statusId) => actions.removeStatus(combatant.id, statusId)}
-                statusPresets={presets.statuses}
-              />
-            ))
+            <div className="combatant-scroll" ref={combatantScrollRef}>
+              {state.combatants.map((combatant) => (
+                <div
+                  key={combatant.id}
+                  className="combatant-card-wrapper"
+                  ref={(node) => {
+                    if (node) {
+                      combatantRefs.current.set(combatant.id, node);
+                    } else {
+                      combatantRefs.current.delete(combatant.id);
+                    }
+                  }}
+                >
+                  <CombatantCard
+                    combatant={combatant}
+                    isActive={combatant.id === state.activeCombatantId}
+                    onCenter={() => actions.setActiveCombatant(combatant.id)}
+                    onDamage={(amount) => actions.applyDelta(combatant.id, amount)}
+                    onHeal={(amount) => actions.applyDelta(combatant.id, -amount)}
+                    onRemove={() => actions.removeCombatant(combatant.id)}
+                    onUpdate={(changes) => actions.updateCombatant(combatant.id, changes)}
+                    onAddStatus={(template, rounds, note) => handleAddStatus(combatant.id, template, rounds, note)}
+                    onRemoveStatus={(statusId) => actions.removeStatus(combatant.id, statusId)}
+                    statusPresets={presets.statuses}
+                  />
+                </div>
+              ))}
+            </div>
           )}
         </section>
       </div>
