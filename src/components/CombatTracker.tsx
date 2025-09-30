@@ -22,19 +22,17 @@ const CombatTracker = () => {
   };
 
   const scrollItemIntoView = (container: HTMLElement, element: HTMLElement) => {
-    const containerWidth = container.clientWidth;
-    const containerScroll = container.scrollLeft;
-    const elementLeft = element.offsetLeft;
-    const elementWidth = element.offsetWidth;
-    const elementRight = elementLeft + elementWidth;
-    const containerRight = containerScroll + containerWidth;
+    const containerRect = container.getBoundingClientRect();
+    const elementRect = element.getBoundingClientRect();
 
-    if (elementLeft >= containerScroll && elementRight <= containerRight) {
+    if (elementRect.top < containerRect.top) {
+      container.scrollBy({ top: elementRect.top - containerRect.top - 12, behavior: 'smooth' });
       return;
     }
 
-    const target = elementLeft - (containerWidth - elementWidth) / 2;
-    container.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+    if (elementRect.bottom > containerRect.bottom) {
+      container.scrollBy({ top: elementRect.bottom - containerRect.bottom + 12, behavior: 'smooth' });
+    }
   };
 
   useEffect(() => {
@@ -72,47 +70,49 @@ const CombatTracker = () => {
       </header>
 
       <div className="tracker-main">
-        <section className="initiative-bar">
-          <div className="panel-head">
-            <h2>Initiative Order</h2>
-            <button
-              type="button"
-              className="ghost"
-              onClick={() => setShowCreatePanel((value) => !value)}
-            >
-              {showCreatePanel ? 'Close' : 'Add Combatant'}
+        <aside className="initiative-column">
+          <section className="initiative-bar">
+            <div className="panel-head">
+              <h2>Initiative Order</h2>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setShowCreatePanel((value) => !value)}
+              >
+                {showCreatePanel ? 'Close' : 'Add Combatant'}
+              </button>
+            </div>
+
+            <div className="initiative-scroll" ref={initiativeScrollRef}>
+              <InitiativeList
+                combatants={state.combatants}
+                activeId={state.activeCombatantId}
+                onSelect={actions.setActiveCombatant}
+                registerItemRef={(id, node) => {
+                  if (node) {
+                    initiativeRefs.current.set(id, node);
+                  } else {
+                    initiativeRefs.current.delete(id);
+                  }
+                }}
+              />
+            </div>
+
+            {showCreatePanel && (
+              <AddCombatantForm
+                onCreate={(payload) => {
+                  actions.addCombatant(payload);
+                  setShowCreatePanel(false);
+                }}
+                iconOptions={presets.icons}
+              />
+            )}
+
+            <button type="button" className="ghost wide" onClick={actions.resetEncounter}>
+              Reset Encounter
             </button>
-          </div>
-
-          <div className="initiative-scroll" ref={initiativeScrollRef}>
-            <InitiativeList
-              combatants={state.combatants}
-              activeId={state.activeCombatantId}
-              onSelect={actions.setActiveCombatant}
-              registerItemRef={(id, node) => {
-                if (node) {
-                  initiativeRefs.current.set(id, node);
-                } else {
-                  initiativeRefs.current.delete(id);
-                }
-              }}
-            />
-          </div>
-
-          {showCreatePanel && (
-            <AddCombatantForm
-              onCreate={(payload) => {
-                actions.addCombatant(payload);
-                setShowCreatePanel(false);
-              }}
-              iconOptions={presets.icons}
-            />
-          )}
-
-          <button type="button" className="ghost wide" onClick={actions.resetEncounter}>
-            Reset Encounter
-          </button>
-        </section>
+          </section>
+        </aside>
 
         <section className="combatant-strip">
           {state.combatants.length === 0 ? (
@@ -137,7 +137,7 @@ const CombatTracker = () => {
                     '--abs-offset': distance,
                     zIndex: state.combatants.length - distance,
                     opacity: distance > 2 ? 0 : Math.max(0.2, 1 - distance * 0.18),
-                    pointerEvents: distance > 2 ? 'none' : 'auto'
+                    pointerEvents: isActive ? 'auto' : 'none'
                   };
 
                   return (

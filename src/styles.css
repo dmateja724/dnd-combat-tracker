@@ -123,10 +123,17 @@ button {
   text-transform: uppercase;
 }
 
+
 .tracker-main {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.initiative-column {
   display: flex;
   flex-direction: column;
-  gap: 24px;
 }
 
 .initiative-bar {
@@ -137,15 +144,22 @@ button {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(100vh - 220px);
+  overflow: hidden;
 }
 
 .initiative-scroll {
-  overflow-x: auto;
-  padding-bottom: 4px;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding-right: 6px;
+  margin-right: -6px;
+  max-height: none;
 }
 
 .initiative-scroll::-webkit-scrollbar {
-  height: 8px;
+  width: 6px;
 }
 
 .initiative-scroll::-webkit-scrollbar-thumb {
@@ -156,16 +170,16 @@ button {
 .initiative-list {
   list-style: none;
   margin: 0;
-  padding: 4px 8px;
-  display: inline-flex;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  min-width: max-content;
 }
 
 .initiative-list li {
   border-radius: 12px;
   overflow: hidden;
-  min-width: 220px;
+  width: 100%;
   padding: 4px;
 }
 
@@ -180,54 +194,72 @@ button {
 }
 
 .combatant-carousel {
-  --carousel-item-gap: clamp(260px, 40vw, 360px);
+  --carousel-item-gap: clamp(240px, 40vw, 360px);
   display: flex;
   justify-content: center;
-  min-height: clamp(460px, 58vh, 520px);
-  padding: 32px 0 40px;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 32px 48px;
   position: relative;
-  overflow-x: hidden;
-  overflow-y: visible;
+  overflow: hidden;
+  min-height: clamp(460px, 62vh, 660px);
 }
 
 .combatant-carousel-track {
   position: relative;
-  width: min(100%, 960px);
+  width: 100%;
   min-height: inherit;
 }
 
 .combatant-carousel-item {
   position: absolute;
-  top: 0;
+  top: 50%;
   left: 50%;
-  width: clamp(300px, 36vw, 420px);
-  transform: translateX(-50%)
+  width: clamp(280px, 34vw, 420px);
+  transform: translate(-50%, -50%)
     translateX(calc(var(--offset) * var(--carousel-item-gap)))
-    scale(calc(0.94 - min(var(--abs-offset), 2) * 0.12));
+    scale(calc(0.92 - min(var(--abs-offset), 2) * 0.12));
   transition: transform 0.45s ease, opacity 0.45s ease, filter 0.45s ease;
   filter: brightness(calc(1 - min(var(--abs-offset), 2) * 0.12));
 }
 
 .combatant-carousel-item .combatant-card {
   width: 100%;
+  height: 100%;
 }
 
 .combatant-carousel-item.active {
   filter: brightness(1);
-  transform: translateX(-50%)
+  transform: translate(-50%, -50%)
     translateX(calc(var(--offset) * var(--carousel-item-gap)))
-    scale(0.94);
+    scale(1);
+}
+
+@media (max-width: 900px) {
+  .tracker-main {
+    grid-template-columns: 1fr;
+  }
+
+  .initiative-scroll {
+    max-height: none;
+    margin-right: 0;
+  }
+
+  .initiative-bar {
+    max-height: none;
+  }
 }
 
 @media (max-width: 768px) {
   .combatant-carousel {
-    --carousel-item-gap: clamp(200px, 78vw, 300px);
-    min-height: 360px;
-    padding: 28px 0 34px;
+    --carousel-item-gap: clamp(200px, 80vw, 340px);
+    min-height: clamp(380px, 70vh, 520px);
+    padding: 28px 24px 40px;
   }
 
   .combatant-carousel-item {
-    width: min(92vw, 360px);
+    width: min(92vw, 380px);
   }
 
   .controls {
@@ -253,7 +285,7 @@ button {
   padding: 12px 16px;
   text-align: left;
   transition: transform 0.2s ease, border 0.2s ease;
-  min-width: 220px;
+  min-width: 0;
   width: 100%;
 }
 
