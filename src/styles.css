@@ -156,6 +156,7 @@ button {
   padding-right: 6px;
   margin-right: -6px;
   max-height: none;
+  min-height: 0;
 }
 
 .initiative-scroll::-webkit-scrollbar {
