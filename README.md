@@ -1,4 +1,4 @@
-# Dungeons & Tactics – Combat Tracker
+# Dungeons & Dragons – Combat Tracker
 
 A sleek React + Vite encounter manager tailored for D&D-style combat. Track initiative, damage, status effects, and party notes in a single, modern control panel with a hint of arcane flair.
 
