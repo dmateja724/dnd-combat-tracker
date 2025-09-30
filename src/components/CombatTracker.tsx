@@ -1,17 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { useCombatTracker } from '../hooks/useCombatTracker';
 import InitiativeList from './InitiativeList';
 import CombatantCard from './CombatantCard';
 import AddCombatantForm from './forms/AddCombatantForm';
 import type { StatusEffectTemplate } from '../types';
 
+type CarouselItemStyle = CSSProperties & {
+  '--offset'?: number;
+  '--abs-offset'?: number;
+};
+
 const CombatTracker = () => {
   const { state, actions, presets } = useCombatTracker();
   const [showCreatePanel, setShowCreatePanel] = useState(false);
   const initiativeScrollRef = useRef<HTMLDivElement | null>(null);
   const initiativeRefs = useRef(new Map<string, HTMLLIElement>());
-  const combatantScrollRef = useRef<HTMLDivElement | null>(null);
-  const combatantRefs = useRef(new Map<string, HTMLDivElement>());
 
   const handleAddStatus = (combatantId: string, template: StatusEffectTemplate, rounds: number | null, note?: string) => {
     actions.addStatus(combatantId, template, rounds, note);
@@ -41,19 +45,16 @@ const CombatTracker = () => {
     scrollItemIntoView(container, item);
   }, [state.activeCombatantId, state.combatants]);
 
-  useEffect(() => {
-    if (!state.activeCombatantId) return;
-    const container = combatantScrollRef.current;
-    const card = combatantRefs.current.get(state.activeCombatantId);
-    if (!container || !card) return;
-    scrollItemIntoView(container, card);
-  }, [state.activeCombatantId, state.combatants]);
+  const activeIndex = state.activeCombatantId
+    ? state.combatants.findIndex((combatant) => combatant.id === state.activeCombatantId)
+    : 0;
+  const normalizedActiveIndex = activeIndex === -1 ? 0 : activeIndex;
 
   return (
     <div className="tracker-shell">
       <header className="tracker-header">
         <div>
-          <h1>Dungeons & Tactics</h1>
+          <h1>D&D Combat Tracker</h1>
           <p className="tracker-subtitle">Keep the encounter flowing with initiative, damage, and status tracking.</p>
         </div>
         <div className="tracker-round">
@@ -125,33 +126,42 @@ const CombatTracker = () => {
               )}
             </div>
           ) : (
-            <div className="combatant-scroll" ref={combatantScrollRef}>
-              {state.combatants.map((combatant) => (
-                <div
-                  key={combatant.id}
-                  className="combatant-card-wrapper"
-                  ref={(node) => {
-                    if (node) {
-                      combatantRefs.current.set(combatant.id, node);
-                    } else {
-                      combatantRefs.current.delete(combatant.id);
-                    }
-                  }}
-                >
-                  <CombatantCard
-                    combatant={combatant}
-                    isActive={combatant.id === state.activeCombatantId}
-                    onCenter={() => actions.setActiveCombatant(combatant.id)}
-                    onDamage={(amount) => actions.applyDelta(combatant.id, amount)}
-                    onHeal={(amount) => actions.applyDelta(combatant.id, -amount)}
-                    onRemove={() => actions.removeCombatant(combatant.id)}
-                    onUpdate={(changes) => actions.updateCombatant(combatant.id, changes)}
-                    onAddStatus={(template, rounds, note) => handleAddStatus(combatant.id, template, rounds, note)}
-                    onRemoveStatus={(statusId) => actions.removeStatus(combatant.id, statusId)}
-                    statusPresets={presets.statuses}
-                  />
-                </div>
-              ))}
+            <div className="combatant-carousel">
+              <div className="combatant-carousel-track">
+                {state.combatants.map((combatant, index) => {
+                  const isActive = combatant.id === state.activeCombatantId || (!state.activeCombatantId && index === normalizedActiveIndex);
+                  const offset = index - normalizedActiveIndex;
+                  const distance = Math.abs(offset);
+                  const style: CarouselItemStyle = {
+                    '--offset': offset,
+                    '--abs-offset': distance,
+                    zIndex: state.combatants.length - distance,
+                    opacity: distance > 2 ? 0 : Math.max(0.2, 1 - distance * 0.18),
+                    pointerEvents: distance > 2 ? 'none' : 'auto'
+                  };
+
+                  return (
+                    <div
+                      key={combatant.id}
+                      className={`combatant-carousel-item${isActive ? ' active' : ''}`}
+                      style={style}
+                    >
+                      <CombatantCard
+                        combatant={combatant}
+                        isActive={isActive}
+                        onCenter={() => actions.setActiveCombatant(combatant.id)}
+                        onDamage={(amount) => actions.applyDelta(combatant.id, amount)}
+                        onHeal={(amount) => actions.applyDelta(combatant.id, -amount)}
+                        onRemove={() => actions.removeCombatant(combatant.id)}
+                        onUpdate={(changes) => actions.updateCombatant(combatant.id, changes)}
+                        onAddStatus={(template, rounds, note) => handleAddStatus(combatant.id, template, rounds, note)}
+                        onRemoveStatus={(statusId) => actions.removeStatus(combatant.id, statusId)}
+                        statusPresets={presets.statuses}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </section>

@@ -179,36 +179,64 @@ button {
   gap: 16px;
 }
 
-.combatant-scroll {
-  display: inline-flex;
-  gap: 12px;
-  overflow-x: auto;
-  padding: 8px 8px 12px;
-  min-height: 100%;
-}
-
-.combatant-scroll::-webkit-scrollbar {
-  height: 10px;
-}
-
-.combatant-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-}
-
-.combatant-card-wrapper {
-  flex: 0 0 360px;
+.combatant-carousel {
+  --carousel-item-gap: clamp(260px, 40vw, 360px);
   display: flex;
-  padding: 8px;
+  justify-content: center;
+  min-height: clamp(460px, 58vh, 520px);
+  padding: 32px 0 40px;
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: visible;
 }
 
-.combatant-card-wrapper > .combatant-card {
+.combatant-carousel-track {
+  position: relative;
+  width: min(100%, 960px);
+  min-height: inherit;
+}
+
+.combatant-carousel-item {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: clamp(300px, 36vw, 420px);
+  transform: translateX(-50%)
+    translateX(calc(var(--offset) * var(--carousel-item-gap)))
+    scale(calc(0.94 - min(var(--abs-offset), 2) * 0.12));
+  transition: transform 0.45s ease, opacity 0.45s ease, filter 0.45s ease;
+  filter: brightness(calc(1 - min(var(--abs-offset), 2) * 0.12));
+}
+
+.combatant-carousel-item .combatant-card {
   width: 100%;
 }
 
-.combatant-scroll::after {
-  content: "";
-  flex: 0 0 8px;
+.combatant-carousel-item.active {
+  filter: brightness(1);
+  transform: translateX(-50%)
+    translateX(calc(var(--offset) * var(--carousel-item-gap)))
+    scale(0.94);
+}
+
+@media (max-width: 768px) {
+  .combatant-carousel {
+    --carousel-item-gap: clamp(200px, 78vw, 300px);
+    min-height: 360px;
+    padding: 28px 0 34px;
+  }
+
+  .combatant-carousel-item {
+    width: min(92vw, 360px);
+  }
+
+  .controls {
+    grid-template-columns: 1fr;
+  }
+
+  .card-bottom {
+    grid-template-columns: 1fr;
+  }
 }
 
 
@@ -288,8 +316,8 @@ button {
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 20px;
+  gap: 12px;
+  padding: 16px;
   position: relative;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border 0.2s ease;
 }
@@ -317,21 +345,25 @@ button {
   align-items: center;
   align-items: center;
   display: grid;
-  gap: 16px;
-  grid-template-columns: 56px 1fr auto;
+  gap: 12px;
+  grid-template-columns: 52px 1fr auto;
+}
+
+.card-head h3 {
+  font-size: 20px;
 }
 
 .avatar {
   align-items: center;
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid transparent;
-  border-radius: 18px;
+  border-radius: 16px;
   display: grid;
-  font-size: 24px;
-  height: 56px;
+  font-size: 22px;
+  height: 52px;
   justify-items: center;
   transition: border 0.2s ease, transform 0.2s ease;
-  width: 56px;
+  width: 52px;
 }
 
 .avatar:hover {
@@ -342,8 +374,8 @@ button {
 .meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
+  gap: 5px;
+  margin-top: 2px;
 }
 
 .tag {
@@ -371,32 +403,47 @@ button {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 12px;
+  gap: 6px 10px;
   justify-content: flex-end;
 }
 
 .card-actions button {
-  min-width: 120px;
+  min-width: 104px;
+}
+
+.combatant-card button {
+  padding: 6px 12px;
+}
+
+.quick-row button,
+.custom-row button {
+  padding: 5px 10px;
+}
+
+.card-bottom {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .hp-block {
   background: rgba(255, 255, 255, 0.04);
   border-radius: 16px;
-  padding: 16px;
+  padding: 12px;
 }
 
 .hp-info {
   align-items: baseline;
   display: flex;
   gap: 8px;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .hp-bar {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
-  height: 8px;
-  margin-top: 12px;
+  height: 6px;
+  margin-top: 8px;
   overflow: hidden;
 }
 
@@ -409,37 +456,37 @@ button {
 .controls {
   background: rgba(255, 255, 255, 0.02);
   border-radius: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(208px, 1fr));
+  padding: 12px;
 }
 
 .quick-row {
-  align-items: center;
+  align-items: stretch;
   display: flex;
-  gap: 12px;
-  justify-content: space-between;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .quick-row > span {
-  flex: 1 0 120px;
-  min-width: 120px;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .quick-row > div {
   display: inline-flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
 }
 
 .custom-row {
   align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: auto 1fr auto auto;
+  grid-column: 1 / -1;
 }
 
 .custom-row input {
@@ -447,26 +494,32 @@ button {
   border: 1px solid var(--border-soft);
   border-radius: 10px;
   color: inherit;
-  padding: 6px 10px;
-  flex: 1 1 140px;
-  min-width: 120px;
+  padding: 5px 10px;
+  min-width: 100px;
+  justify-self: stretch;
 }
 
 .custom-row label {
-  flex: 0 0 auto;
-  min-width: 100px;
+  min-width: 84px;
+  justify-self: start;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .custom-row button {
-  flex: 0 1 auto;
-  min-width: 120px;
+  min-width: 96px;
+  justify-self: start;
 }
 
 .status-section,
 .notes-section {
   background: rgba(255, 255, 255, 0.02);
   border-radius: 16px;
-  padding: 16px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 0;
 }
 
 .status-head,
@@ -474,13 +527,19 @@ button {
   align-items: center;
   display: flex;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+}
+
+.status-head h4,
+.notes-head h4 {
+  font-size: 14px;
+  margin: 0;
 }
 
 .status-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .status-chip {
@@ -489,9 +548,9 @@ button {
   border-radius: 999px;
   color: #1f1b24;
   display: inline-flex;
-  font-size: 13px;
-  gap: 6px;
-  padding: 6px 12px;
+  font-size: 12px;
+  gap: 5px;
+  padding: 5px 10px;
 }
 
 .status-chip .icon {
@@ -507,8 +566,8 @@ button {
 
 .status-form {
   display: grid;
-  gap: 12px;
-  margin-top: 16px;
+  gap: 10px;
+  margin-top: 8px;
 }
 
 .status-form label {
@@ -520,26 +579,27 @@ button {
 
 .custom-status-fields {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .status-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
   justify-content: flex-end;
 }
 
 .notes-editor {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .notes-copy {
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
+  margin: 0;
 }
 
 .add-combatant {
@@ -669,10 +729,6 @@ button.wide {
   .card-actions button {
     min-width: 0;
   }
-
-  .quick-row > span {
-    flex: 1 0 100px;
-  }
 }
 
 
@@ -692,36 +748,23 @@ button.wide {
   }
 
   .quick-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .quick-row > span {
-    min-width: 0;
+    gap: 8px;
   }
 
   .quick-row > div {
-    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
   .custom-row {
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: 1fr;
   }
 
-  .custom-row label {
-    width: 100%;
-  }
-
-  .custom-row input {
-    flex: 1 1 auto;
-    min-width: 0;
-    width: 100%;
-  }
-
+  .custom-row label,
+  .custom-row input,
   .custom-row button {
-    min-width: 0;
     width: 100%;
+    min-width: 0;
+    justify-self: stretch;
   }
 
   .status-actions {
@@ -747,4 +790,3 @@ button.wide {
     padding: 24px;
   }
 }
-

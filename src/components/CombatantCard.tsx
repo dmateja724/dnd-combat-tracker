@@ -189,153 +189,155 @@ const CombatantCard = ({
         </form>
       </section>
 
-      <section className="status-section">
-        <div className="status-head">
-          <h4>Status Effects</h4>
-          <button type="button" className="ghost" onClick={() => setStatusPanelOpen((open) => !open)}>
-            {statusPanelOpen ? 'Close' : 'Add'}
-          </button>
-        </div>
-
-        <div className="status-chips">
-          {combatant.statuses.length === 0 && <span className="muted">None</span>}
-          {combatant.statuses.map((status) => (
-            <button
-              key={status.instanceId}
-              type="button"
-              className="status-chip"
-              style={{ backgroundColor: status.color }}
-              onClick={() => onRemoveStatus(status.instanceId)}
-              title={status.note || status.description || status.label}
-            >
-              <span className="icon">{status.icon}</span>
-              <span>{status.label}</span>
-              {status.remainingRounds !== null ? <span className="rounds">{status.remainingRounds}</span> : null}
-            </button>
-          ))}
-        </div>
-
-        {statusPanelOpen ? (
-          <form className="status-form" onSubmit={handleStatusSubmit}>
-            <label>
-              Preset
-              <select
-                value={selectedStatusId}
-                onChange={(event) => setSelectedStatusId(event.target.value)}
-              >
-                {statusPresets.map((preset) => (
-                  <option key={preset.id} value={preset.id}>
-                    {preset.icon} {preset.label}
-                  </option>
-                ))}
-                <option value="custom">Custom…</option>
-              </select>
-            </label>
-
-            {selectedStatusId === 'custom' ? (
-              <div className="custom-status-fields">
-                <label>
-                  Label
-                  <input
-                    type="text"
-                    value={customStatusLabel}
-                    onChange={(event) => setCustomStatusLabel(event.target.value)}
-                    placeholder="Status name"
-                    required
-                  />
-                </label>
-                <label>
-                  Icon
-                  <input
-                    type="text"
-                    value={customStatusIcon}
-                    maxLength={2}
-                    onChange={(event) => setCustomStatusIcon(event.target.value)}
-                  />
-                </label>
-                <label>
-                  Color
-                  <input
-                    type="color"
-                    value={customStatusColor}
-                    onChange={(event) => setCustomStatusColor(event.target.value)}
-                  />
-                </label>
-              </div>
-            ) : null}
-
-            <label>
-              Rounds
-              <input
-                type="number"
-                min={0}
-                value={rounds}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setRounds(value === '' ? '' : Number(value));
-                }}
-                placeholder="∞"
-              />
-            </label>
-
-            <label>
-              Note
-              <input
-                type="text"
-                value={statusNote}
-                onChange={(event) => setStatusNote(event.target.value)}
-                placeholder="Optional reminder"
-              />
-            </label>
-
-            <div className="status-actions">
-              <button type="submit" className="primary">
-                Add Status
-              </button>
-              <button type="button" className="ghost" onClick={() => setStatusPanelOpen(false)}>
-                Cancel
-              </button>
-            </div>
-          </form>
-        ) : null}
-      </section>
-
-      <section className="notes-section">
-        <div className="notes-head">
-          <h4>Notes</h4>
-          <button
-            type="button"
-            className="ghost"
-            onClick={() => {
-              if (isEditingNote) {
-                setIsEditingNote(false);
-                setNoteDraft(combatant.note ?? '');
-              } else {
-                setIsEditingNote(true);
-              }
-            }}
-          >
-            {isEditingNote ? 'Cancel' : combatant.note ? 'Edit' : 'Add'}
-          </button>
-        </div>
-        {isEditingNote ? (
-          <div className="notes-editor">
-            <textarea
-              value={noteDraft}
-              onChange={(event) => setNoteDraft(event.target.value)}
-              placeholder="Battlefield reminders, resistances, tactics…"
-              rows={3}
-            />
-            <button type="button" className="primary" onClick={handleNoteSubmit}>
-              Save Note
+      <div className="card-bottom">
+        <section className="status-section">
+          <div className="status-head">
+            <h4>Status Effects</h4>
+            <button type="button" className="ghost" onClick={() => setStatusPanelOpen((open) => !open)}>
+              {statusPanelOpen ? 'Close' : 'Add'}
             </button>
           </div>
-        ) : (
-          <p className={clsx('notes-copy', { muted: !combatant.note })}>
-            {combatant.note || 'No notes yet'}
-          </p>
-        )}
-      </section>
+
+          <div className="status-chips">
+            {combatant.statuses.length === 0 && <span className="muted">None</span>}
+            {combatant.statuses.map((status) => (
+              <button
+                key={status.instanceId}
+                type="button"
+                className="status-chip"
+                style={{ backgroundColor: status.color }}
+                onClick={() => onRemoveStatus(status.instanceId)}
+                title={status.note || status.description || status.label}
+              >
+                <span className="icon">{status.icon}</span>
+                <span>{status.label}</span>
+                {status.remainingRounds !== null ? <span className="rounds">{status.remainingRounds}</span> : null}
+              </button>
+            ))}
+          </div>
+
+          {statusPanelOpen ? (
+            <form className="status-form" onSubmit={handleStatusSubmit}>
+              <label>
+                Preset
+                <select
+                  value={selectedStatusId}
+                  onChange={(event) => setSelectedStatusId(event.target.value)}
+                >
+                  {statusPresets.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.icon} {preset.label}
+                    </option>
+                  ))}
+                  <option value="custom">Custom…</option>
+                </select>
+              </label>
+
+              {selectedStatusId === 'custom' ? (
+                <div className="custom-status-fields">
+                  <label>
+                    Label
+                    <input
+                      type="text"
+                      value={customStatusLabel}
+                      onChange={(event) => setCustomStatusLabel(event.target.value)}
+                      placeholder="Status name"
+                      required
+                    />
+                  </label>
+                  <label>
+                    Icon
+                    <input
+                      type="text"
+                      value={customStatusIcon}
+                      maxLength={2}
+                      onChange={(event) => setCustomStatusIcon(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Color
+                    <input
+                      type="color"
+                      value={customStatusColor}
+                      onChange={(event) => setCustomStatusColor(event.target.value)}
+                    />
+                  </label>
+                </div>
+              ) : null}
+
+              <label>
+                Rounds
+                <input
+                  type="number"
+                  min={0}
+                  value={rounds}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setRounds(value === '' ? '' : Number(value));
+                  }}
+                  placeholder="∞"
+                />
+              </label>
+
+              <label>
+                Note
+                <input
+                  type="text"
+                  value={statusNote}
+                  onChange={(event) => setStatusNote(event.target.value)}
+                  placeholder="Optional reminder"
+                />
+              </label>
+
+              <div className="status-actions">
+                <button type="submit" className="primary">
+                  Add Status
+                </button>
+                <button type="button" className="ghost" onClick={() => setStatusPanelOpen(false)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : null}
+        </section>
+
+        <section className="notes-section">
+          <div className="notes-head">
+            <h4>Notes</h4>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => {
+                if (isEditingNote) {
+                  setIsEditingNote(false);
+                  setNoteDraft(combatant.note ?? '');
+                } else {
+                  setIsEditingNote(true);
+                }
+              }}
+            >
+              {isEditingNote ? 'Cancel' : combatant.note ? 'Edit' : 'Add'}
+            </button>
+          </div>
+          {isEditingNote ? (
+            <div className="notes-editor">
+              <textarea
+                value={noteDraft}
+                onChange={(event) => setNoteDraft(event.target.value)}
+                placeholder="Battlefield reminders, resistances, tactics…"
+                rows={3}
+              />
+              <button type="button" className="primary" onClick={handleNoteSubmit}>
+                Save Note
+              </button>
+            </div>
+          ) : (
+            <p className={clsx('notes-copy', { muted: !combatant.note })}>
+              {combatant.note || 'No notes yet'}
+            </p>
+          )}
+        </section>
+      </div>
     </article>
   );
 };
