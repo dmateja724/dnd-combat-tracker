@@ -1,0 +1,46 @@
+# Node / npm
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build output
+/dist
+/.vite
+.vite-inspect
+
+# Editor configs
+*.swp
+*.swo
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+*.sublime-workspace
+*.sublime-project
+
+# TypeScript
+*.tsbuildinfo
+
+# Coverage / test output
+coverage/
+*.lcov
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Mac/Windows
+Icon?
+
+oh-my-zsh*
+
+# Misc
+*.local
