@@ -4,6 +4,7 @@ import { AddCombatantInput } from '../../hooks/useCombatTracker';
 interface AddCombatantFormProps {
   onCreate: (payload: AddCombatantInput) => void;
   iconOptions: { id: string; label: string; icon: string }[];
+  onCancel?: () => void;
 }
 
 type FormState = {
@@ -18,7 +19,7 @@ type FormState = {
 
 const defaultIcon = '⚔️';
 
-const AddCombatantForm = ({ onCreate, iconOptions }: AddCombatantFormProps) => {
+const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormProps) => {
   const initialState: FormState = {
     name: '',
     type: 'player',
@@ -51,7 +52,14 @@ const AddCombatantForm = ({ onCreate, iconOptions }: AddCombatantFormProps) => {
 
   return (
     <form className="add-combatant" onSubmit={handleSubmit}>
-      <h3>Add Combatant</h3>
+      <div className="add-combatant-head">
+        <h3>Add Combatant</h3>
+        {onCancel && (
+          <button type="button" className="add-combatant-close" onClick={onCancel} aria-label="Close add combatant form">
+            ×
+          </button>
+        )}
+      </div>
       <label>
         Name
         <input

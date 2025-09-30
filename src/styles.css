@@ -641,14 +641,68 @@ button {
   border-radius: 16px;
   display: grid;
   gap: 12px;
-  margin-top: 20px;
-  padding: 20px;
+  padding: 24px;
+  width: 100%;
+  max-height: min(520px, calc(100vh - 160px));
+  overflow-y: auto;
+}
+
+.add-combatant::-webkit-scrollbar {
+  width: 6px;
+}
+
+.add-combatant::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+.add-combatant-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
 }
 
 .add-combatant h3 {
   font-family: 'Unbounded', 'Inter', sans-serif;
   font-size: 18px;
   letter-spacing: 0.04em;
+}
+
+.add-combatant-close {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px;
+  transition: color 0.2s ease;
+}
+
+.add-combatant-close:hover,
+.add-combatant-close:focus-visible {
+  color: var(--accent);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(8, 6, 12, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modal-container {
+  position: relative;
+  width: min(100%, 480px);
+  max-height: 100%;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  pointer-events: auto;
 }
 
 .add-combatant label,
@@ -766,6 +820,10 @@ button.wide {
 
 
 @media (max-width: 640px) {
+  .modal-backdrop {
+    padding: 16px;
+  }
+
   .card-head {
     grid-template-columns: 1fr;
     gap: 12px;

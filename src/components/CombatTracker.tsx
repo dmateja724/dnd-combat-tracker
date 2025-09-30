@@ -4,6 +4,7 @@ import { useCombatTracker } from '../hooks/useCombatTracker';
 import InitiativeList from './InitiativeList';
 import CombatantCard from './CombatantCard';
 import AddCombatantForm from './forms/AddCombatantForm';
+import Modal from './Modal';
 import type { StatusEffectTemplate } from '../types';
 
 type CarouselItemStyle = CSSProperties & {
@@ -13,7 +14,7 @@ type CarouselItemStyle = CSSProperties & {
 
 const CombatTracker = () => {
   const { state, actions, presets } = useCombatTracker();
-  const [showCreatePanel, setShowCreatePanel] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const initiativeScrollRef = useRef<HTMLDivElement | null>(null);
   const initiativeRefs = useRef(new Map<string, HTMLLIElement>());
 
@@ -74,12 +75,8 @@ const CombatTracker = () => {
           <section className="initiative-bar">
             <div className="panel-head">
               <h2>Initiative Order</h2>
-              <button
-                type="button"
-                className="ghost"
-                onClick={() => setShowCreatePanel((value) => !value)}
-              >
-                {showCreatePanel ? 'Close' : 'Add Combatant'}
+              <button type="button" className="ghost" onClick={() => setIsCreateModalOpen(true)}>
+                Add Combatant
               </button>
             </div>
 
@@ -98,16 +95,6 @@ const CombatTracker = () => {
               />
             </div>
 
-            {showCreatePanel && (
-              <AddCombatantForm
-                onCreate={(payload) => {
-                  actions.addCombatant(payload);
-                  setShowCreatePanel(false);
-                }}
-                iconOptions={presets.icons}
-              />
-            )}
-
             <button type="button" className="ghost wide" onClick={actions.resetEncounter}>
               Reset Encounter
             </button>
@@ -119,8 +106,8 @@ const CombatTracker = () => {
             <div className="empty-state">
               <h3>No combatants yet</h3>
               <p>Add heroes and foes to begin tracking this encounter.</p>
-              {!showCreatePanel && (
-                <button type="button" className="primary" onClick={() => setShowCreatePanel(true)}>
+              {!isCreateModalOpen && (
+                <button type="button" className="primary" onClick={() => setIsCreateModalOpen(true)}>
                   Add Combatant
                 </button>
               )}
@@ -166,6 +153,16 @@ const CombatTracker = () => {
           )}
         </section>
       </div>
+      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} ariaLabel="Add combatant form">
+        <AddCombatantForm
+          onCreate={(payload) => {
+            actions.addCombatant(payload);
+            setIsCreateModalOpen(false);
+          }}
+          iconOptions={presets.icons}
+          onCancel={() => setIsCreateModalOpen(false)}
+        />
+      </Modal>
     </div>
   );
 };
