@@ -485,7 +485,7 @@ button {
   align-items: center;
   display: grid;
   gap: 6px;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto minmax(100px, 1fr) repeat(2, minmax(0, 1fr));
   grid-column: 1 / -1;
 }
 
@@ -495,20 +495,20 @@ button {
   border-radius: 10px;
   color: inherit;
   padding: 5px 10px;
-  min-width: 100px;
+  min-width: 0;
   justify-self: stretch;
 }
 
 .custom-row label {
-  min-width: 84px;
+  white-space: nowrap;
   justify-self: start;
   font-size: 13px;
   color: var(--text-secondary);
 }
 
 .custom-row button {
-  min-width: 96px;
-  justify-self: start;
+  min-width: 0;
+  width: 100%;
 }
 
 .status-section,
