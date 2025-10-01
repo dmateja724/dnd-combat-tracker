@@ -1,3 +1,4 @@
+import { jsx as _jsx } from "react/jsx-runtime";
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
@@ -5,15 +6,4 @@ import './styles.css';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { EncounterProvider } from './context/EncounterContext';
-
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <AuthProvider>
-        <EncounterProvider>
-          <App />
-        </EncounterProvider>
-      </AuthProvider>
-    </BrowserRouter>
-  </React.StrictMode>
-);
+ReactDOM.createRoot(document.getElementById('root')).render(_jsx(React.StrictMode, { children: _jsx(BrowserRouter, { children: _jsx(AuthProvider, { children: _jsx(EncounterProvider, { children: _jsx(App, {}) }) }) }) }));

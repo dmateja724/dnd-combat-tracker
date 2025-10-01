@@ -44,18 +44,26 @@ const ensureSchema = () => {
   );
 
   const encounterColumns = db.prepare(`PRAGMA table_info(encounters)`).all() as Array<{ name: string }>;
-  const hasUserIdColumn = encounterColumns.some((column) => column.name === 'user_id');
-  if (!hasUserIdColumn) {
+  const expectedColumns = new Set(['id', 'user_id', 'name', 'state', 'created_at', 'updated_at']);
+  const hasExpectedShape =
+    encounterColumns.length === expectedColumns.size &&
+    encounterColumns.every((column) => expectedColumns.has(column.name));
+
+  if (!hasExpectedShape) {
     db.exec('DROP TABLE IF EXISTS encounters');
   }
 
   db.exec(
     `CREATE TABLE IF NOT EXISTS encounters (
-      user_id TEXT PRIMARY KEY,
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
       state TEXT NOT NULL,
+      created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-    )`
+    );
+     CREATE INDEX IF NOT EXISTS idx_encounters_user ON encounters(user_id);`
   );
 };
 
@@ -80,13 +88,39 @@ const insertUser = db.prepare(
    VALUES (@id, @email, @passwordHash, @createdAt)`
 );
 
-const selectEncounterByUser = db.prepare('SELECT state FROM encounters WHERE user_id = ?');
-const upsertEncounter = db.prepare(
-  `INSERT INTO encounters (user_id, state, updated_at)
-   VALUES (@userId, @state, @updatedAt)
-   ON CONFLICT(user_id) DO UPDATE SET state = excluded.state, updated_at = excluded.updated_at`
+const selectEncountersByUser = db.prepare(
+  `SELECT id, name, created_at, updated_at
+   FROM encounters
+   WHERE user_id = ?
+   ORDER BY datetime(updated_at) DESC`
 );
-const deleteEncounter = db.prepare('DELETE FROM encounters WHERE user_id = ?');
+
+const selectEncounterById = db.prepare(
+  `SELECT id, user_id, name, state, created_at, updated_at
+   FROM encounters
+   WHERE id = ?`
+);
+
+const insertEncounter = db.prepare(
+  `INSERT INTO encounters (id, user_id, name, state, created_at, updated_at)
+   VALUES (@id, @userId, @name, @state, @createdAt, @updatedAt)`
+);
+
+const updateEncounterState = db.prepare(
+  `UPDATE encounters
+   SET state = @state, updated_at = @updatedAt
+   WHERE id = @id AND user_id = @userId`
+);
+
+const updateEncounterName = db.prepare(
+  `UPDATE encounters
+   SET name = @name, updated_at = @updatedAt
+   WHERE id = @id AND user_id = @userId`
+);
+
+const deleteEncounterStmt = db.prepare('DELETE FROM encounters WHERE id = ? AND user_id = ?');
+
+const defaultEncounterState = JSON.stringify({ combatants: [], activeCombatantId: null, round: 1 });
 
 const createSessionToken = (userId: string) =>
   jwt.sign({ sub: userId }, TOKEN_SECRET, {
@@ -230,32 +264,114 @@ app.post('/api/logout', (_req, res) => {
   res.status(204).end();
 });
 
-app.get('/api/encounter', requireAuth, (req, res) => {
+const ensureEncounterOwnership = (encounterId: string, userId: string) => {
+  const encounter = selectEncounterById.get(encounterId) as
+    | {
+        id: string;
+        user_id: string;
+        name: string;
+        state: string;
+        created_at: string;
+        updated_at: string;
+      }
+    | undefined;
+
+  if (!encounter || encounter.user_id !== userId) {
+    return null;
+  }
+
+  return encounter;
+};
+
+const serializeEncounterSummary = (row: {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}) => ({
+  id: row.id,
+  name: row.name,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+});
+
+app.get('/api/encounters', requireAuth, (req, res) => {
   const { userId } = req as AuthenticatedRequest;
 
   try {
-    const row = selectEncounterByUser.get(userId) as { state: string } | undefined;
-    if (!row) {
-      res.status(204).end();
-      return;
-    }
-
-    try {
-      const payload = JSON.parse(row.state);
-      res.json(payload);
-    } catch (parseError) {
-      console.error('Stored encounter could not be parsed. Clearing row.', parseError);
-      deleteEncounter.run(userId);
-      res.status(204).end();
-    }
+    const rows = selectEncountersByUser.all(userId) as Array<{
+      id: string;
+      name: string;
+      created_at: string;
+      updated_at: string;
+    }>;
+    res.json(rows.map(serializeEncounterSummary));
   } catch (error) {
-    console.error('Failed to load encounter', error);
-    res.status(500).json({ error: 'Failed to load encounter.' });
+    console.error('Failed to list encounters', error);
+    res.status(500).json({ error: 'Failed to list encounters.' });
   }
 });
 
-app.put('/api/encounter', requireAuth, (req, res) => {
+app.post('/api/encounters', requireAuth, (req, res) => {
   const { userId } = req as AuthenticatedRequest;
+  const nameInput = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+  const now = new Date().toISOString();
+  const id = nanoid(16);
+  const name = nameInput.length > 0 ? nameInput : `Encounter ${now.slice(0, 10)}`;
+
+  try {
+    insertEncounter.run({
+      id,
+      userId,
+      name,
+      state: defaultEncounterState,
+      createdAt: now,
+      updatedAt: now
+    });
+
+    res.status(201).json({ id, name, createdAt: now, updatedAt: now });
+  } catch (error) {
+    console.error('Failed to create encounter', error);
+    res.status(500).json({ error: 'Failed to create encounter.' });
+  }
+});
+
+app.get('/api/encounters/:id', requireAuth, (req, res) => {
+  const { userId } = req as AuthenticatedRequest;
+  const encounterId = req.params.id;
+
+  const encounter = ensureEncounterOwnership(encounterId, userId);
+  if (!encounter) {
+    res.status(404).json({ error: 'Encounter not found.' });
+    return;
+  }
+
+  try {
+    const payload = JSON.parse(encounter.state);
+    res.json({
+      id: encounter.id,
+      name: encounter.name,
+      createdAt: encounter.created_at,
+      updatedAt: encounter.updated_at,
+      state: payload
+    });
+  } catch (error) {
+    console.error('Stored encounter could not be parsed. Clearing row.', error);
+    deleteEncounterStmt.run(encounter.id, userId);
+    res.status(404).json({ error: 'Encounter data corrupted. Entry removed.' });
+  }
+});
+
+app.put('/api/encounters/:id/state', requireAuth, (req, res) => {
+  const { userId } = req as AuthenticatedRequest;
+  const encounterId = req.params.id;
+  const encounter = ensureEncounterOwnership(encounterId, userId);
+
+  if (!encounter) {
+    res.status(404).json({ error: 'Encounter not found.' });
+    return;
+  }
+
   const state = req.body;
   if (!state || typeof state !== 'object') {
     res.status(400).json({ error: 'Encounter payload is required.' });
@@ -264,7 +380,7 @@ app.put('/api/encounter', requireAuth, (req, res) => {
 
   try {
     const serialized = JSON.stringify(state);
-    upsertEncounter.run({ userId, state: serialized, updatedAt: new Date().toISOString() });
+    updateEncounterState.run({ id: encounterId, userId, state: serialized, updatedAt: new Date().toISOString() });
     res.status(204).end();
   } catch (error) {
     console.error('Failed to save encounter', error);
@@ -272,10 +388,47 @@ app.put('/api/encounter', requireAuth, (req, res) => {
   }
 });
 
-app.delete('/api/encounter', requireAuth, (req, res) => {
+app.patch('/api/encounters/:id', requireAuth, (req, res) => {
   const { userId } = req as AuthenticatedRequest;
+  const encounterId = req.params.id;
+  const encounter = ensureEncounterOwnership(encounterId, userId);
+
+  if (!encounter) {
+    res.status(404).json({ error: 'Encounter not found.' });
+    return;
+  }
+
+  const nameInput = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+  if (!nameInput) {
+    res.status(400).json({ error: 'Encounter name is required.' });
+    return;
+  }
+
   try {
-    deleteEncounter.run(userId);
+    const updatedAt = new Date().toISOString();
+    updateEncounterName.run({ id: encounterId, userId, name: nameInput, updatedAt });
+    res.json({
+      id: encounterId,
+      name: nameInput,
+      createdAt: encounter.created_at,
+      updatedAt
+    });
+  } catch (error) {
+    console.error('Failed to rename encounter', error);
+    res.status(500).json({ error: 'Failed to rename encounter.' });
+  }
+});
+
+app.delete('/api/encounters/:id', requireAuth, (req, res) => {
+  const { userId } = req as AuthenticatedRequest;
+  const encounterId = req.params.id;
+
+  try {
+    const info = deleteEncounterStmt.run(encounterId, userId);
+    if (info.changes === 0) {
+      res.status(404).json({ error: 'Encounter not found.' });
+      return;
+    }
     res.status(204).end();
   } catch (error) {
     console.error('Failed to delete encounter', error);
