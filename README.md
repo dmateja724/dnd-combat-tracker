@@ -8,7 +8,8 @@ A sleek React + Vite encounter manager tailored for D&D-style combat. Track init
 - HP management – quick damage/heal buttons, configurable adjustments, and visual health bars.
 - Status effect library – preset debuffs/buffs, per-combatant timers, and custom effects with color plus icon.
 - Notes and metadata – capture AC, tactics, and reminders directly on each combatant card.
-- Persistent state – encounter state is saved to localStorage so a page refresh does not wipe progress.
+- Player accounts – sign up or sign in to sync your encounters to a local SQLite database.
+- Persistent state – encounter state is saved to a local SQLite database via the bundled API server.
 - Preloaded demo – starts with a sample skirmish so you can explore the UI immediately.
 
 ## Getting Started
@@ -17,11 +18,17 @@ A sleek React + Vite encounter manager tailored for D&D-style combat. Track init
 
         npm install
 
-2. Start the dev server:
+2. In a separate terminal start the API server:
+
+        npm run server
+
+   (Alternatively run both servers together with `npm run dev:all`.)
+
+3. Start the Vite dev server:
 
         npm run dev
 
-3. Open the printed URL (default http://localhost:5173) to run the tracker.
+4. Open the printed URL (default http://localhost:5173) to run the tracker.
 
 To create a production build run
 
@@ -57,8 +64,14 @@ to serve the bundle locally.
 
 ## Notes
 
-- The tracker relies on browser localStorage; if you clear storage or use incognito mode the encounter will reset.
-- No backend is required, but feel free to integrate one by wiring the reducer actions to your own API.
+- The tracker stores state in a local SQLite database (stored in `data/combat-tracker.db`). Delete that file to reset saved encounters.
+- The bundled API server is intentionally simple; extend its routes if you need multiple saved encounters, remote sync, or other campaign tools.
 - The UI is responsive down to tablet sizes; mobile works but may feel compressed—future iterations could add a condensed mode.
+
+## Authentication
+
+- Create an account from the Sign Up screen; the API will hash your password and keep it inside the local SQLite database.
+- Sessions are managed with an HTTP-only cookie. Use the **Sign Out** button in the tracker header to end a session and return to the sign-in page.
+- Encounter data is scoped per account, so each user gets their own saved battle state.
 
 Happy adventuring! 🐉

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { nanoid } from 'nanoid';
 import {
   Combatant,
@@ -9,8 +9,7 @@ import {
 } from '../types';
 import { STATUS_EFFECT_LIBRARY } from '../data/statusEffects';
 import { COMBATANT_ICON_LIBRARY } from '../data/combatantIcons';
-
-const STORAGE_KEY = 'combat-tracker-state-v1';
+import { loadEncounter, saveEncounter } from '../data/encounterDb';
 
 export interface AddCombatantInput {
   name: string;
@@ -41,8 +40,7 @@ type TrackerAction =
   | { type: 'rewind' }
   | { type: 'add-status'; payload: { id: string; status: StatusEffectInstance } }
   | { type: 'remove-status'; payload: { id: string; statusId: string } }
-  | { type: 'hydrate'; payload: EncounterState }
-  | { type: 'clear' };
+  | { type: 'hydrate'; payload: EncounterState };
 
 type TrackerState = EncounterState;
 
@@ -68,23 +66,19 @@ const decrementStatusDurations = (combatants: Combatant[]) =>
       .filter((status) => status.remainingRounds === null || status.remainingRounds > 0)
   }));
 
-const initialState: EncounterState = {
-  combatants: [],
-  activeCombatantId: null,
-  round: 1
-};
-
 const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerState => {
   switch (action.type) {
     case 'hydrate': {
+      const sanitized = action.payload.combatants.map((combatant) => ({
+        ...combatant,
+        statuses: combatant.statuses ?? []
+      }));
       const hydrated = {
         ...action.payload,
-        combatants: sortCombatants(action.payload.combatants)
+        combatants: sortCombatants(sanitized)
       };
       return hydrated;
     }
-    case 'clear':
-      return initialState;
     case 'add-combatant': {
       const combatants = sortCombatants([...state.combatants, action.payload]);
       const activeCombatantId = combatants.length === 1 ? combatants[0].id : state.activeCombatantId;
@@ -270,37 +264,39 @@ const defaultEncounter = (): EncounterState => {
   };
 };
 
-const reviveFromStorage = (): EncounterState => {
-  if (typeof window === 'undefined') {
-    return defaultEncounter();
-  }
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultEncounter();
-    const parsed = JSON.parse(raw) as EncounterState;
-    return {
-      ...parsed,
-      combatants: parsed.combatants.map((combatant) => ({
-        ...combatant,
-        statuses: combatant.statuses ?? []
-      }))
-    };
-  } catch (error) {
-    console.warn('Failed to load combat tracker state, starting fresh', error);
-    return defaultEncounter();
-  }
-};
-
-const persistState = (state: EncounterState) => {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-};
-
 export const useCombatTracker = () => {
-  const [state, dispatch] = useReducer(trackerReducer, initialState, reviveFromStorage);
+  const initialEncounterRef = useRef<EncounterState | null>(null);
+  if (!initialEncounterRef.current) {
+    initialEncounterRef.current = defaultEncounter();
+  }
+
+  const [state, dispatch] = useReducer(trackerReducer, initialEncounterRef.current);
+  const hasHydratedRef = useRef(false);
 
   useEffect(() => {
-    persistState(state);
+    let isCancelled = false;
+
+    const bootstrap = async () => {
+      const stored = await loadEncounter();
+      if (isCancelled) return;
+      hasHydratedRef.current = true;
+      if (stored) {
+        dispatch({ type: 'hydrate', payload: stored });
+      } else if (initialEncounterRef.current) {
+        dispatch({ type: 'hydrate', payload: initialEncounterRef.current });
+      }
+    };
+
+    void bootstrap();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydratedRef.current) return;
+    void saveEncounter(state);
   }, [state]);
 
   const addCombatant = useCallback((input: AddCombatantInput) => {
@@ -363,7 +359,6 @@ export const useCombatTracker = () => {
   }, []);
 
   const resetEncounter = useCallback(() => {
-    dispatch({ type: 'clear' });
     const fallback = defaultEncounter();
     dispatch({ type: 'hydrate', payload: fallback });
   }, []);
