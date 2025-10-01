@@ -9,6 +9,7 @@ A sleek React + Vite encounter manager tailored for D&D-style combat. Track init
 - Status effect library – preset debuffs/buffs, per-combatant timers, and custom effects with color plus icon.
 - Notes and metadata – capture AC, tactics, and reminders directly on each combatant card.
 - Player accounts – sign up or sign in to sync your encounters to a local SQLite database.
+- Encounter library – maintain multiple saved battles per account and switch between them on demand.
 - Persistent state – encounter state is saved to a local SQLite database via the bundled API server.
 - Blank canvas – start with an empty encounter and populate it with your party.
 
@@ -73,5 +74,11 @@ to serve the bundle locally.
 - Create an account from the Sign Up screen; the API will hash your password and keep it inside the local SQLite database.
 - Sessions are managed with an HTTP-only cookie. Use the **Sign Out** button in the tracker header to end a session and return to the sign-in page.
 - Encounter data is scoped per account, so each user gets their own saved battle state.
+
+## Managing Encounters
+
+- After signing in the tracker opens with the encounter picker modal—create a fresh battle or reopen any of your saved encounters before diving in.
+- Rename or delete encounters directly from that modal, and bring it back anytime with the **Switch** button in the tracker header.
+- Each encounter opens with a clean slate, letting you build the roster exactly as the session demands.
 
 Happy adventuring! 🐉

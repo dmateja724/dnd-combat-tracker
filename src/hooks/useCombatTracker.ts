@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { nanoid } from 'nanoid';
 import {
   Combatant,
@@ -215,7 +215,7 @@ const defaultEncounter = (): EncounterState => ({
   round: 1
 });
 
-export const useCombatTracker = () => {
+export const useCombatTracker = (encounterId: string | null) => {
   const initialEncounterRef = useRef<EncounterState | null>(null);
   if (!initialEncounterRef.current) {
     initialEncounterRef.current = defaultEncounter();
@@ -223,19 +223,27 @@ export const useCombatTracker = () => {
 
   const [state, dispatch] = useReducer(trackerReducer, initialEncounterRef.current);
   const hasHydratedRef = useRef(false);
+  const [isHydrating, setIsHydrating] = useState(true);
 
   useEffect(() => {
     let isCancelled = false;
 
     const bootstrap = async () => {
-      const stored = await loadEncounter();
+      if (!encounterId) {
+        hasHydratedRef.current = true;
+        setIsHydrating(false);
+        dispatch({ type: 'hydrate', payload: defaultEncounter() });
+        return;
+      }
+
+      hasHydratedRef.current = false;
+      setIsHydrating(true);
+
+      const stored = await loadEncounter(encounterId);
       if (isCancelled) return;
       hasHydratedRef.current = true;
-      if (stored) {
-        dispatch({ type: 'hydrate', payload: stored });
-      } else if (initialEncounterRef.current) {
-        dispatch({ type: 'hydrate', payload: initialEncounterRef.current });
-      }
+      setIsHydrating(false);
+      dispatch({ type: 'hydrate', payload: stored ?? defaultEncounter() });
     };
 
     void bootstrap();
@@ -243,12 +251,13 @@ export const useCombatTracker = () => {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [encounterId]);
 
   useEffect(() => {
     if (!hasHydratedRef.current) return;
-    void saveEncounter(state);
-  }, [state]);
+    if (!encounterId) return;
+    void saveEncounter(encounterId, state);
+  }, [encounterId, state]);
 
   const addCombatant = useCallback((input: AddCombatantInput) => {
     const combatant: Combatant = {
@@ -351,6 +360,7 @@ export const useCombatTracker = () => {
       resetEncounter,
       hydrate
     },
-    presets
+    presets,
+    isLoading: isHydrating
   };
 };

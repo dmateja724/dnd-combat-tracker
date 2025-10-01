@@ -7,6 +7,8 @@ import AddCombatantForm from './forms/AddCombatantForm';
 import Modal from './Modal';
 import type { StatusEffectTemplate } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { useEncounterContext } from '../context/EncounterContext';
+import EncounterManager from './EncounterManager';
 
 type CarouselItemStyle = CSSProperties & {
   '--offset'?: number;
@@ -14,9 +16,11 @@ type CarouselItemStyle = CSSProperties & {
 };
 
 const CombatTracker = () => {
-  const { state, actions, presets } = useCombatTracker();
+  const { selectedEncounterId, selectedEncounter } = useEncounterContext();
+  const { state, actions, presets, isLoading } = useCombatTracker(selectedEncounterId);
   const { user, handleSignOut } = useAuth();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(!selectedEncounterId);
   const initiativeScrollRef = useRef<HTMLDivElement | null>(null);
   const initiativeRefs = useRef(new Map<string, HTMLLIElement>());
 
@@ -46,10 +50,30 @@ const CombatTracker = () => {
     scrollItemIntoView(container, item);
   }, [state.activeCombatantId, state.combatants]);
 
+  useEffect(() => {
+    setIsSelectionModalOpen(!selectedEncounterId);
+  }, [selectedEncounterId]);
+
+  const handleCloseSelectionModal = () => {
+    if (!selectedEncounterId) return;
+    setIsSelectionModalOpen(false);
+  };
+
   const activeIndex = state.activeCombatantId
     ? state.combatants.findIndex((combatant) => combatant.id === state.activeCombatantId)
     : 0;
   const normalizedActiveIndex = activeIndex === -1 ? 0 : activeIndex;
+
+  if (isLoading) {
+    return (
+      <div className="tracker-shell">
+        <div className="empty-state">
+          <h3>Loading encounter…</h3>
+          <p>Please wait while we retrieve the latest state.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="tracker-shell">
@@ -63,6 +87,13 @@ const CombatTracker = () => {
           <span className="value">{state.round}</span>
         </div>
         <div className="tracker-meta">
+          <div className="session-info">
+            <span className="session-label">Encounter</span>
+            <span className="session-value">{selectedEncounter?.name ?? 'Untitled Encounter'}</span>
+            <button type="button" className="ghost" onClick={() => setIsSelectionModalOpen(true)}>
+              Switch
+            </button>
+          </div>
           <div className="session-info">
             <span className="session-label">Signed in as</span>
             <span className="session-value">{user?.email}</span>
@@ -173,6 +204,13 @@ const CombatTracker = () => {
           iconOptions={presets.icons}
           onCancel={() => setIsCreateModalOpen(false)}
         />
+      </Modal>
+      <Modal
+        isOpen={isSelectionModalOpen}
+        onClose={handleCloseSelectionModal}
+        ariaLabel="Encounter selection"
+      >
+        <EncounterManager onClose={handleCloseSelectionModal} disableClose={!selectedEncounterId} />
       </Modal>
     </div>
   );
