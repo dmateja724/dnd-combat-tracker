@@ -209,60 +209,11 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
 
 const fallbackIcons = COMBATANT_ICON_LIBRARY.map((item) => item.icon);
 
-const defaultEncounter = (): EncounterState => {
-  const fighterId = nanoid(8);
-  const wizardId = nanoid(8);
-  const goblinOne = nanoid(8);
-  const goblinTwo = nanoid(8);
-
-  return {
-    combatants: sortCombatants([
-      {
-        id: fighterId,
-        name: 'Ser Gideon',
-        type: 'player',
-        initiative: 17,
-        hp: { current: 42, max: 42 },
-        ac: 18,
-        icon: '⚔️',
-        statuses: []
-      },
-      {
-        id: wizardId,
-        name: 'Lyra Emberweave',
-        type: 'ally',
-        initiative: 14,
-        hp: { current: 28, max: 28 },
-        ac: 13,
-        icon: '🪄',
-        statuses: []
-      },
-      {
-        id: goblinOne,
-        name: 'Goblin Skirmisher',
-        type: 'enemy',
-        initiative: 12,
-        hp: { current: 18, max: 18 },
-        ac: 14,
-        icon: '🐺',
-        statuses: []
-      },
-      {
-        id: goblinTwo,
-        name: 'Goblin Hexer',
-        type: 'enemy',
-        initiative: 9,
-        hp: { current: 22, max: 22 },
-        ac: 12,
-        icon: '🎭',
-        statuses: []
-      }
-    ]),
-    activeCombatantId: fighterId,
-    round: 1,
-    startedAt: new Date().toISOString()
-  };
-};
+const defaultEncounter = (): EncounterState => ({
+  combatants: [],
+  activeCombatantId: null,
+  round: 1
+});
 
 export const useCombatTracker = () => {
   const initialEncounterRef = useRef<EncounterState | null>(null);
