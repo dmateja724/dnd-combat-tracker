@@ -10,7 +10,7 @@ A sleek React + Vite encounter manager tailored for D&D-style combat. Track init
 - Notes and metadata – capture AC, tactics, and reminders directly on each combatant card.
 - Player accounts – sign up or sign in to sync your encounters to a local SQLite database.
 - Persistent state – encounter state is saved to a local SQLite database via the bundled API server.
-- Preloaded demo – starts with a sample skirmish so you can explore the UI immediately.
+- Blank canvas – start with an empty encounter and populate it with your party.
 
 ## Getting Started
 
