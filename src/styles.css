@@ -63,7 +63,7 @@ button {
   align-items: center;
   display: grid;
   gap: 24px;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto minmax(260px, 1fr);
   margin-bottom: 32px;
 }
 
@@ -106,6 +106,111 @@ button {
 .turn-controls {
   display: inline-flex;
   gap: 12px;
+}
+
+.tracker-meta {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.session-info {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.session-label {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.session-value {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.auth-shell {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: calc(100vh - 64px);
+}
+
+.auth-card {
+  backdrop-filter: blur(18px);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-soft);
+  border-radius: 20px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 40px;
+  width: min(420px, 100%);
+}
+
+.auth-card h1 {
+  font-family: 'Unbounded', 'Inter', sans-serif;
+  font-size: 28px;
+}
+
+.auth-subtitle {
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+.auth-error {
+  background: rgba(214, 40, 40, 0.15);
+  border: 1px solid rgba(214, 40, 40, 0.4);
+  border-radius: 12px;
+  color: #ffb4b4;
+  padding: 12px 16px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-form label {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.auth-form input {
+  background: rgba(12, 11, 18, 0.6);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  color: var(--text-primary);
+  padding: 12px 14px;
+}
+
+.auth-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(193, 18, 31, 0.3);
+}
+
+.auth-form button {
+  margin-top: 8px;
+}
+
+.auth-footer {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.auth-footer a {
+  color: var(--accent-strong);
+  font-weight: 600;
 }
 
 

@@ -6,6 +6,7 @@ import CombatantCard from './CombatantCard';
 import AddCombatantForm from './forms/AddCombatantForm';
 import Modal from './Modal';
 import type { StatusEffectTemplate } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 type CarouselItemStyle = CSSProperties & {
   '--offset'?: number;
@@ -14,6 +15,7 @@ type CarouselItemStyle = CSSProperties & {
 
 const CombatTracker = () => {
   const { state, actions, presets } = useCombatTracker();
+  const { user, handleSignOut } = useAuth();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const initiativeScrollRef = useRef<HTMLDivElement | null>(null);
   const initiativeRefs = useRef(new Map<string, HTMLLIElement>());
@@ -60,13 +62,22 @@ const CombatTracker = () => {
           <span className="label">Round</span>
           <span className="value">{state.round}</span>
         </div>
-        <div className="turn-controls">
-          <button type="button" onClick={actions.rewindTurn} className="ghost">
-            ⏮ Prev
-          </button>
-          <button type="button" onClick={actions.advanceTurn} className="primary">
-            Next ⏭
-          </button>
+        <div className="tracker-meta">
+          <div className="session-info">
+            <span className="session-label">Signed in as</span>
+            <span className="session-value">{user?.email}</span>
+            <button type="button" className="ghost" onClick={() => void handleSignOut()}>
+              Sign Out
+            </button>
+          </div>
+          <div className="turn-controls">
+            <button type="button" onClick={actions.rewindTurn} className="ghost">
+              ⏮ Prev
+            </button>
+            <button type="button" onClick={actions.advanceTurn} className="primary">
+              Next ⏭
+            </button>
+          </div>
         </div>
       </header>
 
