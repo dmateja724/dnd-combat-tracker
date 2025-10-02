@@ -64,10 +64,10 @@ button {
 }
 
 .tracker-header {
-  align-items: stretch;
+  align-items: start;
   display: grid;
   gap: clamp(16px, 2.6vw, 24px);
-  grid-template-columns: minmax(0, 2fr) minmax(120px, auto) minmax(0, 1.6fr);
+  grid-template-columns: minmax(0, 2fr) minmax(180px, auto) minmax(0, 1.6fr);
   margin-bottom: clamp(24px, 3vw, 32px);
 }
 
@@ -84,7 +84,54 @@ button {
   max-width: 420px;
 }
 
+
+.dice-tray {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: min(100%, 340px);
+}
+
+.dice-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.dice-buttons button {
+  flex: 0 1 72px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dice-result {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
+  background: rgba(193, 18, 31, 0.16);
+  border: 1px solid rgba(193, 18, 31, 0.45);
+  border-radius: 14px;
+  padding: 10px 16px;
+  text-align: center;
+  width: 100%;
+  box-shadow: 0 8px 16px rgba(193, 18, 31, 0.18);
+  transition: background 0.2s ease, border 0.2s ease, color 0.2s ease;
+}
+
+.dice-result.is-empty {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
 .tracker-round {
+  width: 160px;
   align-items: center;
   background: var(--accent-soft);
   border-radius: 12px;
@@ -96,6 +143,8 @@ button {
   font-family: 'Unbounded', 'Inter', sans-serif;
   padding: 12px 24px;
   text-transform: uppercase;
+  margin: 0 auto;
+  align-self: center;
 }
 
 .tracker-round .label {
@@ -110,29 +159,42 @@ button {
 }
 
 .turn-controls {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 18px;
   display: flex;
   gap: 12px;
-  flex-wrap: wrap;
+  justify-content: center;
+  padding: 14px 18px;
+}
+
+.tracker-meta .turn-controls {
+  grid-column: 1 / -1;
+  justify-content: center;
+}
+
+.turn-controls button {
+  min-width: 96px;
   justify-content: center;
 }
 
 .tracker-meta {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(200px, 1fr));
+  gap: 16px;
   align-items: stretch;
   justify-items: stretch;
   width: 100%;
 }
 
 .session-info {
-  align-items: center;
+  align-items: flex-start;
   display: flex;
   flex-direction: column;
   gap: 6px;
   font-size: 14px;
   color: var(--text-secondary);
-  text-align: center;
+  text-align: left;
 }
 
 .session-label {
@@ -469,7 +531,8 @@ button {
   }
 
   .turn-controls {
-    justify-content: flex-start;
+    justify-content: center;
+    flex-wrap: wrap;
   }
 
   .tracker-main {

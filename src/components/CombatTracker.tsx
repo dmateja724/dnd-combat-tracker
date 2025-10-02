@@ -21,6 +21,7 @@ const CombatTracker = () => {
   const { user, handleSignOut } = useAuth();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(!selectedEncounterId);
+  const [lastRoll, setLastRoll] = useState<{ die: number; result: number } | null>(null);
   const initiativeScrollRef = useRef<HTMLDivElement | null>(null);
   const initiativeRefs = useRef(new Map<string, HTMLLIElement>());
 
@@ -59,6 +60,11 @@ const CombatTracker = () => {
     setIsSelectionModalOpen(false);
   };
 
+  const rollDie = (sides: number) => {
+    const result = Math.floor(Math.random() * sides) + 1;
+    setLastRoll({ die: sides, result });
+  };
+
   const activeIndex = state.activeCombatantId
     ? state.combatants.findIndex((combatant) => combatant.id === state.activeCombatantId)
     : 0;
@@ -81,6 +87,23 @@ const CombatTracker = () => {
         <div>
           <h1>D&D Combat Tracker</h1>
           <p className="tracker-subtitle">Keep the encounter flowing with initiative, damage, and status tracking.</p>
+          <div className="dice-tray" aria-live="polite">
+            <div className="dice-buttons">
+              {[20, 12, 10, 8, 6, 4].map((sides) => (
+                <button
+                  key={'die-' + sides}
+                  type="button"
+                  className="ghost"
+                  onClick={() => rollDie(sides)}
+                >
+                  d{sides}
+                </button>
+              ))}
+            </div>
+            <p className={`dice-result${lastRoll ? '' : ' is-empty'}`}>
+              {lastRoll ? `Rolled d${lastRoll.die}: ${lastRoll.result}` : 'Roll a die to see the result here.'}
+            </p>
+          </div>
         </div>
         <div className="tracker-round">
           <span className="label">Round</span>
