@@ -21,7 +21,7 @@ const CombatantCard = ({ combatant, isActive, statusPresets, onCenter, onDamage,
     const [customStatusColor, setCustomStatusColor] = useState('#ffb703');
     const [rounds, setRounds] = useState('');
     const [statusNote, setStatusNote] = useState('');
-    const { saveTemplate, isMutating } = useCombatantLibrary();
+    const { templates, saveTemplate, isMutating } = useCombatantLibrary();
     const [saveState, setSaveState] = useState('idle');
     const resetTimerRef = useRef(null);
     const resetStatusDraft = () => {
@@ -111,13 +111,26 @@ const CombatantCard = ({ combatant, isActive, statusPresets, onCenter, onDamage,
             resetTimerRef.current = setTimeout(() => setSaveState('idle'), 4000);
         }
     };
+    const normalizedNote = combatant.note ? combatant.note.trim() : '';
+    const isInLibrary = useMemo(() => {
+        return templates.some((template) => {
+            const templateNote = template.note ? template.note.trim() : '';
+            return (template.name === combatant.name &&
+                template.type === combatant.type &&
+                template.defaultInitiative === combatant.initiative &&
+                template.maxHp === combatant.hp.max &&
+                (template.ac ?? null) === (combatant.ac ?? null) &&
+                template.icon === combatant.icon &&
+                templateNote === normalizedNote);
+        });
+    }, [combatant.ac, combatant.hp.max, combatant.icon, combatant.initiative, combatant.name, combatant.type, normalizedNote, templates]);
     const saveButtonLabel = saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved!' : saveState === 'error' ? 'Retry Save' : 'Save to Library';
     const isSaveDisabled = saveState === 'saving' || isMutating;
     const hpWidth = Math.max(0, Math.min(healthPercent, 100)) + '%';
     return (_jsxs("article", { className: clsx('combatant-card', 'is-' + combatant.type, {
             active: isActive,
             defeated: isDefeated
-        }), children: [_jsxs("header", { className: "card-head", children: [_jsx("button", { className: "avatar", onClick: onCenter, type: "button", children: _jsx("span", { children: combatant.icon }) }), _jsxs("div", { className: "identity", children: [_jsx("h3", { children: combatant.name }), _jsxs("div", { className: "meta", children: [_jsx("span", { className: 'tag tag-' + combatant.type, children: typeToLabel[combatant.type] }), _jsxs("span", { className: "tag", children: ["Init ", combatant.initiative] }), combatant.ac ? _jsxs("span", { className: "tag", children: ["AC ", combatant.ac] }) : null] })] }), _jsxs("div", { className: "card-actions", children: [_jsx("button", { type: "button", className: "ghost", onClick: () => void handleSaveToLibrary(), disabled: isSaveDisabled, children: saveButtonLabel }), _jsx("button", { type: "button", className: "ghost danger", onClick: onRemove, children: "Remove" })] })] }), _jsxs("section", { className: "hp-block", children: [_jsxs("div", { className: "hp-info", children: [_jsx("strong", { children: combatant.hp.current }), _jsxs("span", { children: ["/ ", combatant.hp.max, " HP"] })] }), _jsx("div", { className: "hp-bar", children: _jsx("div", { className: "hp-progress", style: { width: hpWidth } }) })] }), _jsxs("section", { className: "controls", children: [_jsxs("div", { className: "quick-row", children: [_jsx("span", { children: "Damage" }), _jsx("div", { children: quickDamageValues.map((value) => (_jsxs("button", { type: "button", onClick: () => onDamage(value), children: ["-", value] }, 'dmg-' + value))) })] }), _jsxs("div", { className: "quick-row", children: [_jsx("span", { children: "Heal" }), _jsx("div", { children: quickHealValues.map((value) => (_jsxs("button", { type: "button", onClick: () => onHeal(value), children: ["+", value] }, 'heal-' + value))) })] }), _jsxs("form", { className: "custom-row", onSubmit: (event) => {
+        }), children: [_jsxs("header", { className: "card-head", children: [_jsx("button", { className: "avatar", onClick: onCenter, type: "button", children: _jsx("span", { children: combatant.icon }) }), _jsxs("div", { className: "identity", children: [_jsx("h3", { children: combatant.name }), _jsxs("div", { className: "meta", children: [_jsx("span", { className: 'tag tag-' + combatant.type, children: typeToLabel[combatant.type] }), _jsxs("span", { className: "tag", children: ["Init ", combatant.initiative] }), combatant.ac ? _jsxs("span", { className: "tag", children: ["AC ", combatant.ac] }) : null] })] }), _jsxs("div", { className: "card-actions", children: [!isInLibrary ? (_jsx("button", { type: "button", className: "ghost", onClick: () => void handleSaveToLibrary(), disabled: isSaveDisabled, children: saveButtonLabel })) : null, _jsx("button", { type: "button", className: "ghost danger", onClick: onRemove, children: "Remove" })] })] }), _jsxs("section", { className: "hp-block", children: [_jsxs("div", { className: "hp-info", children: [_jsx("strong", { children: combatant.hp.current }), _jsxs("span", { children: ["/ ", combatant.hp.max, " HP"] })] }), _jsx("div", { className: "hp-bar", children: _jsx("div", { className: "hp-progress", style: { width: hpWidth } }) })] }), _jsxs("section", { className: "controls", children: [_jsxs("div", { className: "quick-row", children: [_jsx("span", { children: "Damage" }), _jsx("div", { children: quickDamageValues.map((value) => (_jsxs("button", { type: "button", onClick: () => onDamage(value), children: ["-", value] }, 'dmg-' + value))) })] }), _jsxs("div", { className: "quick-row", children: [_jsx("span", { children: "Heal" }), _jsx("div", { children: quickHealValues.map((value) => (_jsxs("button", { type: "button", onClick: () => onHeal(value), children: ["+", value] }, 'heal-' + value))) })] }), _jsxs("form", { className: "custom-row", onSubmit: (event) => {
                             event.preventDefault();
                             const amount = Math.max(0, Number(customValue) || 0);
                             if (amount === 0)

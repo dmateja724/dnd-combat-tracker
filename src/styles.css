@@ -64,11 +64,25 @@ button {
 }
 
 .tracker-header {
-  align-items: start;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: clamp(16px, 2.6vw, 24px);
-  grid-template-columns: minmax(0, 2fr) minmax(180px, auto) minmax(0, 1.6fr);
   margin-bottom: clamp(24px, 3vw, 32px);
+}
+
+.tracker-top-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: clamp(16px, 2.6vw, 24px);
+}
+
+.tracker-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 480px;
+  flex: 1 1 280px;
 }
 
 .tracker-header h1 {
@@ -86,24 +100,24 @@ button {
 
 
 .dice-tray {
-  margin-top: 16px;
+  margin: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  width: min(100%, 340px);
-}
-
-.dice-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
+  gap: 16px;
   width: 100%;
 }
 
+.dice-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 12px;
+  width: min(100%, 560px);
+  justify-items: stretch;
+}
+
 .dice-buttons button {
-  flex: 0 1 72px;
+  width: 100%;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -118,7 +132,8 @@ button {
   border-radius: 14px;
   padding: 10px 16px;
   text-align: center;
-  width: 100%;
+  width: min(100%, 360px);
+  margin: 0 auto;
   box-shadow: 0 8px 16px rgba(193, 18, 31, 0.18);
   transition: background 0.2s ease, border 0.2s ease, color 0.2s ease;
 }
@@ -145,6 +160,7 @@ button {
   text-transform: uppercase;
   margin: 0 auto;
   align-self: center;
+  flex: 0 0 auto;
 }
 
 .tracker-round .label {
@@ -168,23 +184,14 @@ button {
   padding: 14px 18px;
 }
 
-.tracker-meta .turn-controls {
-  grid-column: 1 / -1;
-  justify-content: center;
+.turn-controls--carousel {
+  align-self: center;
+  margin-bottom: 8px;
 }
 
 .turn-controls button {
   min-width: 96px;
   justify-content: center;
-}
-
-.tracker-meta {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(200px, 1fr));
-  gap: 16px;
-  align-items: stretch;
-  justify-items: stretch;
-  width: 100%;
 }
 
 .session-info {
@@ -195,6 +202,10 @@ button {
   font-size: 14px;
   color: var(--text-secondary);
   text-align: left;
+}
+
+.tracker-top-row .session-info:first-of-type {
+  margin-left: auto;
 }
 
 .session-label {
@@ -489,25 +500,28 @@ button {
   width: 100%;
   max-width: 900px;
   margin: 0 auto;
-  padding: clamp(40px, 6vw, 72px) clamp(24px, 6vw, 64px) clamp(56px, 8vw, 108px);
+  padding: clamp(24px, 4vw, 48px) clamp(24px, 6vw, 64px) clamp(48px, 8vw, 96px);
   position: relative;
   overflow: hidden;
   min-height: clamp(400px, 60vh, 640px);
 }
 
 .combatant-carousel-track {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  align-items: start;
   position: relative;
   width: 100%;
   min-height: inherit;
 }
 
 .combatant-carousel-item {
-  position: absolute;
-  top: 50%;
-  left: 50%;
+  grid-area: 1 / 1;
   width: clamp(260px, 50vw, 420px);
-  transform: translate(-50%, -50%)
-    translateX(calc(var(--offset) * var(--carousel-item-gap)))
+  display: flex;
+  justify-content: center;
+  transform: translateX(calc(var(--offset) * var(--carousel-item-gap)))
     scale(calc(0.92 - min(var(--abs-offset), 2) * 0.12));
   transition: transform 0.45s ease, opacity 0.45s ease, filter 0.45s ease;
   filter: brightness(calc(1 - min(var(--abs-offset), 2) * 0.12));
@@ -515,21 +529,14 @@ button {
 
 .combatant-carousel-item .combatant-card {
   width: 100%;
-  height: 100%;
 }
 
 .combatant-carousel-item.active {
   filter: brightness(1);
-  transform: translate(-50%, -50%)
-    translateX(calc(var(--offset) * var(--carousel-item-gap)))
-    scale(1);
+  transform: translateX(calc(var(--offset) * var(--carousel-item-gap))) scale(1);
 }
 
 @media (max-width: 900px) {
-  .tracker-header {
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  }
-
   .turn-controls {
     justify-content: center;
     flex-wrap: wrap;
@@ -550,12 +557,9 @@ button {
 }
 
 @media (max-width: 768px) {
-  .tracker-header {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  }
-
-  .tracker-meta {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  .tracker-top-row {
+    flex-direction: column;
+    align-items: center;
   }
 
   .tracker-round {
@@ -564,6 +568,22 @@ button {
     justify-content: center;
     gap: 6px;
     padding: 12px 16px;
+    justify-self: center;
+  }
+
+  .tracker-heading {
+    align-items: center;
+    text-align: center;
+    margin: 0 auto;
+  }
+
+  .session-info {
+    align-items: center;
+    text-align: center;
+  }
+
+  .tracker-top-row .session-info:first-of-type {
+    margin-left: 0;
   }
 
   .turn-controls {
@@ -1428,14 +1448,6 @@ button.wide {
     align-items: center;
   }
 
-  .tracker-header {
-    grid-template-columns: 1fr;
-  }
-
-  .tracker-meta {
-    grid-template-columns: 1fr;
-  }
-
   .turn-controls {
     gap: 10px;
   }
@@ -1528,10 +1540,6 @@ button.wide {
   .tracker-shell {
     padding: clamp(20px, 6vw, 26px);
     border-radius: 16px;
-  }
-
-  .tracker-meta {
-    gap: 10px;
   }
 
   .session-info {
