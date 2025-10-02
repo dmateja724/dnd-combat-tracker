@@ -601,12 +601,12 @@ button {
   align-items: center;
   background: rgba(25, 22, 30, 0.85);
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 12px;
   color: inherit;
   display: grid;
-  gap: 12px;
-  grid-template-columns: 32px 32px 1fr auto;
-  padding: 12px 16px;
+  gap: 16px;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  padding: 14px 18px;
   text-align: left;
   transition: transform 0.2s ease, border 0.2s ease;
   min-width: 0;
@@ -619,9 +619,10 @@ button {
 }
 .initiative-row .info strong {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 600;
+  overflow: visible;
+  white-space: normal;
 }
 
 .initiative-row:hover {
@@ -641,15 +642,20 @@ button {
 }
 
 .initiative-row .icon {
+  align-self: center;
+  font-size: 22px;
+}
+
+.initiative-row .icon {
   font-size: 20px;
 }
 
 .initiative-row .meta {
   color: var(--text-secondary);
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
   font-size: 12px;
-  gap: 4px;
+  gap: 6px;
 }
 
 .initiative-row .type {
