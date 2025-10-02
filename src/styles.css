@@ -34,12 +34,15 @@ body {
   color: var(--text-primary);
   display: flex;
   justify-content: center;
-  padding: 32px;
+  align-items: stretch;
+  padding: clamp(16px, 4vw, 40px);
 }
 
 #root {
   width: 100%;
   max-width: 1200px;
+  display: flex;
+  flex-direction: column;
 }
 
 a {
@@ -56,15 +59,16 @@ button {
   border: 1px solid var(--border-soft);
   border-radius: 20px;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
-  padding: 32px;
+  padding: clamp(24px, 3vw, 32px);
+  width: 100%;
 }
 
 .tracker-header {
-  align-items: center;
+  align-items: stretch;
   display: grid;
-  gap: 24px;
-  grid-template-columns: 1fr auto minmax(260px, 1fr);
-  margin-bottom: 32px;
+  gap: clamp(16px, 2.6vw, 24px);
+  grid-template-columns: minmax(0, 2fr) minmax(120px, auto) minmax(0, 1.6fr);
+  margin-bottom: clamp(24px, 3vw, 32px);
 }
 
 .tracker-header h1 {
@@ -87,6 +91,8 @@ button {
   border: 1px solid var(--border-strong);
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  gap: 6px;
   font-family: 'Unbounded', 'Inter', sans-serif;
   padding: 12px 24px;
   text-transform: uppercase;
@@ -104,23 +110,29 @@ button {
 }
 
 .turn-controls {
-  display: inline-flex;
+  display: flex;
   gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .tracker-meta {
-  align-items: flex-end;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
+  align-items: stretch;
+  justify-items: stretch;
+  width: 100%;
 }
 
 .session-info {
   align-items: center;
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   font-size: 14px;
   color: var(--text-secondary);
+  text-align: center;
 }
 
 .session-label {
@@ -132,6 +144,7 @@ button {
 .session-value {
   color: var(--text-primary);
   font-weight: 600;
+  word-break: break-word;
 }
 
 .auth-shell {
@@ -326,8 +339,8 @@ button {
 
 .tracker-main {
   display: grid;
-  grid-template-columns: minmax(240px, 320px) 1fr;
-  gap: 20px;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: clamp(16px, 3vw, 28px);
   align-items: flex-start;
 }
 
@@ -340,10 +353,10 @@ button {
   background: rgba(12, 11, 18, 0.6);
   border: 1px solid var(--border-soft);
   border-radius: 16px;
-  padding: 20px;
+  padding: clamp(16px, 2.4vw, 20px);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: clamp(12px, 2vw, 16px);
   flex: 1 1 auto;
   min-height: 0;
   max-height: calc(100vh - 220px);
@@ -378,33 +391,46 @@ button {
 }
 
 .initiative-list li {
+  position: relative;
   border-radius: 12px;
-  overflow: hidden;
+  overflow: visible;
   width: 100%;
   padding: 4px;
 }
 
-.initiative-list li.active {
-  box-shadow: 0 0 0 1px var(--accent), 0 0 18px rgba(193, 18, 31, 0.4);
+.initiative-list li::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+  pointer-events: none;
+}
+
+.initiative-list li.active::before {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(193, 18, 31, 0.6), 0 0 12px rgba(193, 18, 31, 0.45);
 }
 
 .combatant-strip {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 100%;
 }
 
 .combatant-carousel {
-  --carousel-item-gap: clamp(240px, 40vw, 360px);
+  --carousel-item-gap: clamp(220px, 38vw, 360px);
   display: flex;
   justify-content: center;
   width: 100%;
   max-width: 900px;
   margin: 0 auto;
-  padding: clamp(48px, 6vw, 72px) clamp(36px, 6vw, 72px) clamp(72px, 8vw, 108px);
+  padding: clamp(40px, 6vw, 72px) clamp(24px, 6vw, 64px) clamp(56px, 8vw, 108px);
   position: relative;
   overflow: hidden;
-  min-height: clamp(460px, 62vh, 660px);
+  min-height: clamp(400px, 60vh, 640px);
 }
 
 .combatant-carousel-track {
@@ -417,7 +443,7 @@ button {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: clamp(280px, 34vw, 420px);
+  width: clamp(260px, 50vw, 420px);
   transform: translate(-50%, -50%)
     translateX(calc(var(--offset) * var(--carousel-item-gap)))
     scale(calc(0.92 - min(var(--abs-offset), 2) * 0.12));
@@ -438,6 +464,14 @@ button {
 }
 
 @media (max-width: 900px) {
+  .tracker-header {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+
+  .turn-controls {
+    justify-content: flex-start;
+  }
+
   .tracker-main {
     grid-template-columns: 1fr;
   }
@@ -453,6 +487,30 @@ button {
 }
 
 @media (max-width: 768px) {
+  .tracker-header {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .tracker-meta {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .tracker-round {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 16px;
+  }
+
+  .turn-controls {
+    justify-content: center;
+  }
+
+  .turn-controls button {
+    flex: 0 1 auto;
+  }
+
   .combatant-carousel {
     --carousel-item-gap: clamp(200px, 80vw, 340px);
     min-height: clamp(380px, 70vh, 520px);
@@ -475,10 +533,12 @@ button {
 
 
 
+
 .initiative-row {
   align-items: center;
   background: rgba(25, 22, 30, 0.85);
   border: 1px solid transparent;
+  border-radius: 10px;
   color: inherit;
   display: grid;
   gap: 12px;
@@ -524,6 +584,36 @@ button {
   padding: 4px 10px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+@media (max-width: 600px) {
+  .initiative-row {
+    grid-template-columns: 32px 1fr;
+    grid-template-areas:
+      'order info'
+      'icon info'
+      'type type';
+    justify-items: flex-start;
+    row-gap: 8px;
+  }
+
+  .initiative-row .order {
+    grid-area: order;
+  }
+
+  .initiative-row .icon {
+    grid-area: icon;
+    justify-self: center;
+  }
+
+  .initiative-row .info {
+    grid-area: info;
+  }
+
+  .initiative-row .type {
+    grid-area: type;
+    justify-self: flex-start;
+  }
 }
 
 .initiative-row .type.player {
@@ -761,12 +851,18 @@ button {
   display: flex;
   justify-content: space-between;
   margin-bottom: 8px;
+  gap: 8px;
 }
 
 .status-head h4,
 .notes-head h4 {
   font-size: 14px;
   margin: 0;
+}
+
+.status-head button,
+.notes-head button {
+  margin-left: auto;
 }
 
 .status-chips {
@@ -821,6 +917,32 @@ button {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.status-modal {
+  background: rgba(14, 12, 18, 0.85);
+  border: 1px solid var(--border-soft);
+  border-radius: 18px;
+  width: min(420px, 100%);
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  padding: clamp(20px, 5vw, 28px);
+  display: grid;
+  gap: 16px;
+}
+
+.status-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.status-modal h3 {
+  font-family: 'Unbounded', 'Inter', sans-serif;
+  font-size: 20px;
+  letter-spacing: 0.05em;
+  margin: 0;
 }
 
 .notes-editor {
@@ -1021,8 +1143,43 @@ button.wide {
 
 
 @media (max-width: 640px) {
+  .tracker-round {
+    width: 100%;
+    align-items: center;
+  }
+
+  .tracker-header {
+    grid-template-columns: 1fr;
+  }
+
+  .tracker-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .turn-controls {
+    gap: 10px;
+  }
+
+  .turn-controls button {
+    flex: 1 1 100%;
+  }
+
+  .combatant-carousel {
+    --carousel-item-gap: clamp(160px, 90vw, 320px);
+    min-height: clamp(320px, 74vh, 500px);
+    padding: clamp(28px, 10vh, 48px) clamp(16px, 6vw, 28px) clamp(36px, 14vh, 56px);
+  }
+
+  .combatant-carousel-item {
+    width: min(96vw, 340px);
+  }
+
   .modal-backdrop {
     padding: 16px;
+  }
+
+  .modal-container {
+    padding: 20px;
   }
 
   .card-head {
@@ -1075,10 +1232,43 @@ button.wide {
 
 @media (max-width: 1024px) {
   body {
-    padding: 16px;
+    padding: clamp(14px, 3vw, 24px);
   }
 
   .tracker-shell {
-    padding: 24px;
+    padding: clamp(22px, 4vw, 28px);
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: clamp(12px, 4vw, 18px);
+  }
+
+  .tracker-shell {
+    padding: clamp(20px, 6vw, 26px);
+    border-radius: 16px;
+  }
+
+  .tracker-meta {
+    gap: 10px;
+  }
+
+  .session-info {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .combatant-carousel {
+    min-height: clamp(300px, 82vh, 440px);
+    padding: clamp(24px, 12vh, 44px) clamp(14px, 6vw, 24px) clamp(32px, 16vh, 52px);
+  }
+
+  .combatant-carousel-item {
+    width: min(94vw, 320px);
+  }
+
+  .modal-container {
+    padding: 16px;
   }
 }
