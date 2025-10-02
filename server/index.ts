@@ -65,6 +65,47 @@ const ensureSchema = () => {
     );
      CREATE INDEX IF NOT EXISTS idx_encounters_user ON encounters(user_id);`
   );
+
+  const templateColumns = db.prepare(`PRAGMA table_info(combatant_templates)`).all() as Array<{ name: string }>;
+  const expectedTemplateColumns = new Set([
+    'id',
+    'user_id',
+    'name',
+    'type',
+    'default_initiative',
+    'max_hp',
+    'ac',
+    'icon',
+    'note',
+    'created_at',
+    'updated_at'
+  ]);
+  const hasTemplateShape =
+    templateColumns.length === expectedTemplateColumns.size &&
+    templateColumns.every((column) => expectedTemplateColumns.has(column.name));
+
+  if (!hasTemplateShape) {
+    db.exec('DROP TABLE IF EXISTS combatant_templates');
+  }
+
+  db.exec(
+    `CREATE TABLE IF NOT EXISTS combatant_templates (
+       id TEXT PRIMARY KEY,
+       user_id TEXT NOT NULL,
+       name TEXT NOT NULL,
+       type TEXT NOT NULL,
+       default_initiative INTEGER NOT NULL,
+       max_hp INTEGER NOT NULL,
+       ac INTEGER,
+       icon TEXT NOT NULL,
+       note TEXT,
+       created_at TEXT NOT NULL,
+       updated_at TEXT NOT NULL,
+       FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+     );
+     CREATE INDEX IF NOT EXISTS idx_templates_user ON combatant_templates(user_id);
+     CREATE INDEX IF NOT EXISTS idx_templates_user_name ON combatant_templates(user_id, name);`
+  );
 };
 
 ensureSchema();
@@ -120,6 +161,37 @@ const updateEncounterName = db.prepare(
 
 const deleteEncounterStmt = db.prepare('DELETE FROM encounters WHERE id = ? AND user_id = ?');
 
+const selectTemplatesByUser = db.prepare(
+  `SELECT id, name, type, default_initiative, max_hp, ac, icon, note, created_at, updated_at
+   FROM combatant_templates
+   WHERE user_id = ?
+   ORDER BY lower(name)`
+);
+
+const selectTemplateById = db.prepare(
+  `SELECT id, user_id, name, type, default_initiative, max_hp, ac, icon, note, created_at, updated_at
+   FROM combatant_templates
+   WHERE id = ?`
+);
+
+const insertTemplate = db.prepare(
+  `INSERT INTO combatant_templates (
+     id,
+     user_id,
+     name,
+     type,
+     default_initiative,
+     max_hp,
+     ac,
+     icon,
+     note,
+     created_at,
+     updated_at
+   ) VALUES (@id, @userId, @name, @type, @defaultInitiative, @maxHp, @ac, @icon, @note, @createdAt, @updatedAt)`
+);
+
+const deleteTemplateStmt = db.prepare('DELETE FROM combatant_templates WHERE id = ? AND user_id = ?');
+
 const defaultEncounterState = JSON.stringify({ combatants: [], activeCombatantId: null, round: 1 });
 
 const createSessionToken = (userId: string) =>
@@ -148,6 +220,8 @@ const clearSessionCookie = (res: Response) => {
 interface AuthenticatedRequest extends Request {
   userId: string;
 }
+
+const combatantTypes = new Set(['player', 'ally', 'enemy']);
 
 const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   const token = req.cookies?.[TOKEN_COOKIE];
@@ -283,6 +357,30 @@ const ensureEncounterOwnership = (encounterId: string, userId: string) => {
   return encounter;
 };
 
+const ensureTemplateOwnership = (templateId: string, userId: string) => {
+  const template = selectTemplateById.get(templateId) as
+    | {
+        id: string;
+        user_id: string;
+        name: string;
+        type: string;
+        default_initiative: number;
+        max_hp: number;
+        ac: number | null;
+        icon: string;
+        note: string | null;
+        created_at: string;
+        updated_at: string;
+      }
+    | undefined;
+
+  if (!template || template.user_id !== userId) {
+    return null;
+  }
+
+  return template;
+};
+
 const serializeEncounterSummary = (row: {
   id: string;
   name: string;
@@ -291,6 +389,30 @@ const serializeEncounterSummary = (row: {
 }) => ({
   id: row.id,
   name: row.name,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+});
+
+const serializeTemplate = (row: {
+  id: string;
+  name: string;
+  type: string;
+  default_initiative: number;
+  max_hp: number;
+  ac: number | null;
+  icon: string;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}) => ({
+  id: row.id,
+  name: row.name,
+  type: row.type,
+  defaultInitiative: row.default_initiative,
+  maxHp: row.max_hp,
+  ac: row.ac,
+  icon: row.icon,
+  note: row.note,
   createdAt: row.created_at,
   updatedAt: row.updated_at
 });
@@ -433,6 +555,125 @@ app.delete('/api/encounters/:id', requireAuth, (req, res) => {
   } catch (error) {
     console.error('Failed to delete encounter', error);
     res.status(500).json({ error: 'Failed to delete encounter.' });
+  }
+});
+
+app.get('/api/combatants', requireAuth, (req, res) => {
+  const { userId } = req as AuthenticatedRequest;
+
+  try {
+    const rows = selectTemplatesByUser.all(userId) as Array<{
+      id: string;
+      name: string;
+      type: string;
+      default_initiative: number;
+      max_hp: number;
+      ac: number | null;
+      icon: string;
+      note: string | null;
+      created_at: string;
+      updated_at: string;
+    }>;
+    res.json(rows.map(serializeTemplate));
+  } catch (error) {
+    console.error('Failed to list combatant templates', error);
+    res.status(500).json({ error: 'Failed to load saved combatants.' });
+  }
+});
+
+app.post('/api/combatants', requireAuth, (req, res) => {
+  const { userId } = req as AuthenticatedRequest;
+  const nameInput = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+  const typeInput = req.body?.type;
+  const initInput = req.body?.defaultInitiative;
+  const maxHpInput = req.body?.maxHp;
+  const acInput = req.body?.ac;
+  const iconInput = typeof req.body?.icon === 'string' ? req.body.icon : '';
+  const noteInput = typeof req.body?.note === 'string' ? req.body.note.trim() : '';
+
+  if (!nameInput) {
+    res.status(400).json({ error: 'Name is required.' });
+    return;
+  }
+
+  if (typeof typeInput !== 'string' || !combatantTypes.has(typeInput)) {
+    res.status(400).json({ error: 'Invalid combatant type.' });
+    return;
+  }
+
+  const parsedInitiative = Number(initInput);
+  if (!Number.isFinite(parsedInitiative)) {
+    res.status(400).json({ error: 'Invalid initiative value.' });
+    return;
+  }
+
+  const parsedMaxHp = Number(maxHpInput);
+  if (!Number.isFinite(parsedMaxHp) || parsedMaxHp <= 0) {
+    res.status(400).json({ error: 'Max HP must be a positive number.' });
+    return;
+  }
+
+  const parsedAc = acInput === undefined || acInput === null || acInput === '' ? null : Number(acInput);
+  if (parsedAc !== null && (!Number.isFinite(parsedAc) || parsedAc < 0)) {
+    res.status(400).json({ error: 'AC must be a non-negative number.' });
+    return;
+  }
+
+  const icon = iconInput.trim() || '?';
+  const now = new Date().toISOString();
+  const id = nanoid(16);
+
+  try {
+    insertTemplate.run({
+      id,
+      userId,
+      name: nameInput,
+      type: typeInput,
+      defaultInitiative: Math.round(parsedInitiative),
+      maxHp: Math.round(parsedMaxHp),
+      ac: parsedAc === null ? null : Math.round(parsedAc),
+      icon,
+      note: noteInput || null,
+      createdAt: now,
+      updatedAt: now
+    });
+
+    res.status(201).json(
+      serializeTemplate({
+        id,
+        name: nameInput,
+        type: typeInput,
+        default_initiative: Math.round(parsedInitiative),
+        max_hp: Math.round(parsedMaxHp),
+        ac: parsedAc === null ? null : Math.round(parsedAc),
+        icon,
+        note: noteInput || null,
+        created_at: now,
+        updated_at: now
+      })
+    );
+  } catch (error) {
+    console.error('Failed to save combatant template', error);
+    res.status(500).json({ error: 'Failed to save combatant template.' });
+  }
+});
+
+app.delete('/api/combatants/:id', requireAuth, (req, res) => {
+  const { userId } = req as AuthenticatedRequest;
+  const templateId = req.params.id;
+
+  const template = ensureTemplateOwnership(templateId, userId);
+  if (!template) {
+    res.status(404).json({ error: 'Combatant template not found.' });
+    return;
+  }
+
+  try {
+    deleteTemplateStmt.run(templateId, userId);
+    res.status(204).end();
+  } catch (error) {
+    console.error('Failed to delete combatant template', error);
+    res.status(500).json({ error: 'Failed to delete combatant template.' });
   }
 });
 

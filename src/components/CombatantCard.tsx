@@ -1,8 +1,9 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { Combatant, StatusEffectTemplate } from '../types';
 import { UpdateCombatantInput } from '../hooks/useCombatTracker';
 import Modal from './Modal';
+import { useCombatantLibrary } from '../context/CombatantLibraryContext';
 
 interface CombatantCardProps {
   combatant: Combatant;
@@ -48,6 +49,9 @@ const CombatantCard = ({
   const [customStatusColor, setCustomStatusColor] = useState('#ffb703');
   const [rounds, setRounds] = useState<number | ''>('');
   const [statusNote, setStatusNote] = useState('');
+  const { saveTemplate, isMutating } = useCombatantLibrary();
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetStatusDraft = () => {
     setSelectedStatusId(statusPresets[0]?.id ?? 'custom');
@@ -71,6 +75,14 @@ const CombatantCard = ({
   useEffect(() => {
     setNoteDraft(combatant.note ?? '');
   }, [combatant.note, combatant.id]);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current) {
+        clearTimeout(resetTimerRef.current);
+      }
+    };
+  }, []);
 
   const healthPercent = useMemo(() => {
     if (combatant.hp.max === 0) return 0;
@@ -109,6 +121,34 @@ const CombatantCard = ({
     closeStatusPanel();
   };
 
+  const handleSaveToLibrary = async () => {
+    if (saveState === 'saving') return;
+    setSaveState('saving');
+    if (resetTimerRef.current) {
+      clearTimeout(resetTimerRef.current);
+    }
+    const result = await saveTemplate({
+      name: combatant.name,
+      type: combatant.type,
+      defaultInitiative: combatant.initiative,
+      maxHp: combatant.hp.max,
+      ac: combatant.ac ?? null,
+      icon: combatant.icon,
+      note: combatant.note ?? undefined
+    });
+    if (result) {
+      setSaveState('saved');
+      resetTimerRef.current = setTimeout(() => setSaveState('idle'), 2000);
+    } else {
+      setSaveState('error');
+      resetTimerRef.current = setTimeout(() => setSaveState('idle'), 4000);
+    }
+  };
+
+  const saveButtonLabel =
+    saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved!' : saveState === 'error' ? 'Retry Save' : 'Save to Library';
+  const isSaveDisabled = saveState === 'saving' || isMutating;
+
   const hpWidth = Math.max(0, Math.min(healthPercent, 100)) + '%';
 
   return (
@@ -131,8 +171,13 @@ const CombatantCard = ({
           </div>
         </div>
         <div className="card-actions">
-          <button type="button" className="ghost" onClick={onCenter}>
-            {isActive ? 'Current Turn' : 'Set Active'}
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => void handleSaveToLibrary()}
+            disabled={isSaveDisabled}
+          >
+            {saveButtonLabel}
           </button>
           <button type="button" className="ghost danger" onClick={onRemove}>
             Remove

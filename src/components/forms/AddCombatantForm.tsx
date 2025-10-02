@@ -1,8 +1,10 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { AddCombatantInput } from '../../hooks/useCombatTracker';
+import { useCombatantLibrary } from '../../context/CombatantLibraryContext';
+import type { CombatantTemplate, CombatantTemplateInput } from '../../types';
 
 interface AddCombatantFormProps {
-  onCreate: (payload: AddCombatantInput) => void;
+  onCreate: (payload: AddCombatantInput, options?: { stayOpen?: boolean }) => void;
   iconOptions: { id: string; label: string; icon: string }[];
   onCancel?: () => void;
 }
@@ -19,35 +21,96 @@ type FormState = {
 
 const defaultIcon = '⚔️';
 
+const toCombatantInput = (state: FormState): AddCombatantInput => ({
+  name: state.name.trim(),
+  type: state.type,
+  initiative: Number.isFinite(state.initiative) ? state.initiative : 0,
+  maxHp: Math.max(1, Number.isFinite(state.maxHp) ? state.maxHp : 1),
+  ac: Number.isFinite(state.ac) ? state.ac : undefined,
+  icon: state.icon,
+  note: state.note.trim() || undefined
+});
+
+const toTemplateInput = (state: FormState): CombatantTemplateInput => ({
+  name: state.name.trim(),
+  type: state.type,
+  defaultInitiative: Number.isFinite(state.initiative) ? state.initiative : 0,
+  maxHp: Math.max(1, Number.isFinite(state.maxHp) ? state.maxHp : 1),
+  ac: Number.isFinite(state.ac) ? state.ac : null,
+  icon: state.icon,
+  note: state.note.trim() || undefined
+});
+
 const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormProps) => {
-  const initialState: FormState = {
-    name: '',
-    type: 'player',
-    initiative: 10,
-    maxHp: 10,
-    ac: 10,
-    icon: iconOptions[0]?.icon ?? defaultIcon,
-    note: ''
-  };
+  const initialState: FormState = useMemo(
+    () => ({
+      name: '',
+      type: 'player',
+      initiative: 10,
+      maxHp: 10,
+      ac: 10,
+      icon: iconOptions[0]?.icon ?? defaultIcon,
+      note: ''
+    }),
+    [iconOptions]
+  );
 
   const [formData, setFormData] = useState<FormState>(initialState);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const { templates, isLoading, isMutating, error, refresh, saveTemplate, removeTemplate } = useCombatantLibrary();
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!formData.name.trim()) return;
-    onCreate({
-      name: formData.name.trim(),
-      type: formData.type,
-      initiative: Number(formData.initiative) || 0,
-      maxHp: Math.max(1, Number(formData.maxHp) || 1),
-      ac: Number.isNaN(Number(formData.ac)) ? undefined : Number(formData.ac),
-      icon: formData.icon,
-      note: formData.note.trim() || undefined
-    });
+    onCreate(toCombatantInput(formData));
+    setFormData(initialState);
+    setFeedback(null);
+  };
+
+  const handleApplyTemplate = (template: CombatantTemplate, stayOpen = false) => {
+    onCreate(
+      {
+        name: template.name,
+        type: template.type,
+        initiative: template.defaultInitiative,
+        maxHp: template.maxHp,
+        ac: template.ac ?? undefined,
+        icon: template.icon,
+        note: template.note ?? undefined
+      },
+      stayOpen ? { stayOpen: true } : undefined
+    );
+  };
+
+  const handleFillFromTemplate = (template: CombatantTemplate) => {
     setFormData({
-      ...initialState,
-      icon: iconOptions[0]?.icon ?? defaultIcon
+      name: template.name,
+      type: template.type,
+      initiative: template.defaultInitiative,
+      maxHp: template.maxHp,
+      ac: template.ac ?? 10,
+      icon: template.icon,
+      note: template.note ?? ''
     });
+    setFeedback('Template values loaded into the form.');
+    setLocalError(null);
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!formData.name.trim()) {
+      setLocalError('Enter a name before saving to the library.');
+      return;
+    }
+    setLocalError(null);
+    setFeedback(null);
+    const created = await saveTemplate(toTemplateInput(formData));
+    if (created) {
+      setFeedback('Saved to library.');
+    } else {
+      setLocalError('Could not save combatant to the library.');
+    }
   };
 
   return (
@@ -60,89 +123,181 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
           </button>
         )}
       </div>
-      <label>
-        Name
-        <input
-          type="text"
-          value={formData.name}
-          onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
-          placeholder="Name or descriptor"
-          required
-        />
-      </label>
+      <div className="add-combatant-grid">
+        <section className="saved-combatant-panel">
+          <div className="saved-combatant-head">
+            <h4>Saved Combatants</h4>
+            <button type="button" className="ghost" onClick={() => void refresh()} disabled={isLoading}>
+              {isLoading ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
+          {error && <p className="form-warning">{error}</p>}
+          <div className="saved-combatant-scroll">
+            {isLoading ? (
+              <p className="empty-state-text">Loading saved combatants…</p>
+            ) : templates.length === 0 ? (
+              <p className="empty-state-text">No saved combatants yet. Save one from this form or any active combatant.</p>
+            ) : (
+              <ul className="saved-combatant-list">
+                {templates.map((template) => (
+                  <li key={template.id}>
+                    <button
+                      type="button"
+                      className="saved-combatant-avatar"
+                      onClick={() => handleFillFromTemplate(template)}
+                      title="Load into form"
+                    >
+                      <span>{template.icon}</span>
+                    </button>
+                    <div className="saved-combatant-info">
+                      <strong>{template.name}</strong>
+                      <span className="saved-combatant-meta">
+                        {template.type} · Init {template.defaultInitiative} · HP {template.maxHp}
+                      </span>
+                    </div>
+                    <div className="saved-combatant-actions">
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() => handleApplyTemplate(template, true)}
+                      >
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() => handleFillFromTemplate(template)}
+                      >
+                        Fill
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost danger"
+                        onClick={() => void removeTemplate(template.id)}
+                        disabled={isMutating}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+        <section className="manual-combatant-form">
+          <label>
+            Name
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(event) => {
+                setFormData((prev) => ({ ...prev, name: event.target.value }));
+                setFeedback(null);
+              }}
+              placeholder="Name or descriptor"
+              required
+            />
+          </label>
 
-      <label>
-        Type
-        <select
-          value={formData.type}
-          onChange={(event) =>
-            setFormData((prev) => ({ ...prev, type: event.target.value as AddCombatantInput['type'] }))
-          }
-        >
-          <option value="player">Player</option>
-          <option value="ally">Ally</option>
-          <option value="enemy">Enemy</option>
-        </select>
-      </label>
+          <label>
+            Type
+            <select
+              value={formData.type}
+              onChange={(event) => {
+                setFormData((prev) => ({ ...prev, type: event.target.value as AddCombatantInput['type'] }));
+                setFeedback(null);
+              }}
+            >
+              <option value="player">Player</option>
+              <option value="ally">Ally</option>
+              <option value="enemy">Enemy</option>
+            </select>
+          </label>
 
-      <div className="inline">
-        <label>
-          Initiative
-          <input
-            type="number"
-            value={formData.initiative}
-            onChange={(event) => setFormData((prev) => ({ ...prev, initiative: Number(event.target.value) }))}
-            min={-10}
-            max={50}
-          />
-        </label>
-        <label>
-          Max HP
-          <input
-            type="number"
-            value={formData.maxHp}
-            onChange={(event) => setFormData((prev) => ({ ...prev, maxHp: Number(event.target.value) }))}
-            min={1}
-          />
-        </label>
-        <label>
-          AC
-          <input
-            type="number"
-            value={formData.ac}
-            onChange={(event) => setFormData((prev) => ({ ...prev, ac: Number(event.target.value) }))}
-            min={0}
-          />
-        </label>
+          <div className="inline">
+            <label>
+              Initiative
+              <input
+                type="number"
+                value={formData.initiative}
+                onChange={(event) => {
+                  setFormData((prev) => ({ ...prev, initiative: Number(event.target.value) }));
+                  setFeedback(null);
+                }}
+                min={-10}
+                max={50}
+              />
+            </label>
+            <label>
+              Max HP
+              <input
+                type="number"
+                value={formData.maxHp}
+                onChange={(event) => {
+                  setFormData((prev) => ({ ...prev, maxHp: Number(event.target.value) }));
+                  setFeedback(null);
+                }}
+                min={1}
+              />
+            </label>
+            <label>
+              AC
+              <input
+                type="number"
+                value={formData.ac}
+                onChange={(event) => {
+                  setFormData((prev) => ({ ...prev, ac: Number(event.target.value) }));
+                  setFeedback(null);
+                }}
+                min={0}
+              />
+            </label>
+          </div>
+
+          <label>
+            Icon
+            <select
+              value={formData.icon}
+              onChange={(event) => {
+                setFormData((prev) => ({ ...prev, icon: event.target.value }));
+                setFeedback(null);
+              }}
+            >
+              {iconOptions.map((option) => (
+                <option key={option.id} value={option.icon}>
+                  {option.icon} {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Notes
+            <textarea
+              value={formData.note}
+              onChange={(event) => {
+                setFormData((prev) => ({ ...prev, note: event.target.value }));
+                setFeedback(null);
+              }}
+              rows={3}
+              placeholder="Opening position, tactics, loot…"
+            />
+          </label>
+
+          {localError && <p className="form-warning">{localError}</p>}
+          {feedback && <p className="form-feedback">{feedback}</p>}
+
+          <div className="form-actions">
+            <button type="submit" className="primary">
+              Add to Encounter
+            </button>
+            <button type="button" className="ghost" onClick={() => void handleSaveTemplate()} disabled={isMutating}>
+              {isMutating ? 'Saving…' : 'Save to Library'}
+            </button>
+          </div>
+        </section>
       </div>
-
-      <label>
-        Icon
-        <select
-          value={formData.icon}
-          onChange={(event) => setFormData((prev) => ({ ...prev, icon: event.target.value }))}
-        >
-          {iconOptions.map((option) => (
-            <option key={option.id} value={option.icon}>
-              {option.icon} {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label>
-        Notes
-        <textarea
-          value={formData.note}
-          onChange={(event) => setFormData((prev) => ({ ...prev, note: event.target.value }))}
-          rows={3}
-          placeholder="Opening position, tactics, loot…"
-        />
-      </label>
-
-      <button type="submit" className="primary wide">
-        Add to Encounter
-      </button>
     </form>
   );
 };

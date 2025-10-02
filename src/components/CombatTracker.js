@@ -78,9 +78,11 @@ const CombatTracker = () => {
                                         pointerEvents: isActive ? 'auto' : 'none'
                                     };
                                     return (_jsx("div", { className: `combatant-carousel-item${isActive ? ' active' : ''}`, style: style, children: _jsx(CombatantCard, { combatant: combatant, isActive: isActive, onCenter: () => actions.setActiveCombatant(combatant.id), onDamage: (amount) => actions.applyDelta(combatant.id, amount), onHeal: (amount) => actions.applyDelta(combatant.id, -amount), onRemove: () => actions.removeCombatant(combatant.id), onUpdate: (changes) => actions.updateCombatant(combatant.id, changes), onAddStatus: (template, rounds, note) => handleAddStatus(combatant.id, template, rounds, note), onRemoveStatus: (statusId) => actions.removeStatus(combatant.id, statusId), statusPresets: presets.statuses }) }, combatant.id));
-                                }) }) })) })] }), _jsx(Modal, { isOpen: isCreateModalOpen, onClose: () => setIsCreateModalOpen(false), ariaLabel: "Add combatant form", children: _jsx(AddCombatantForm, { onCreate: (payload) => {
+                                }) }) })) })] }), _jsx(Modal, { isOpen: isCreateModalOpen, onClose: () => setIsCreateModalOpen(false), ariaLabel: "Add combatant form", children: _jsx(AddCombatantForm, { onCreate: (payload, options) => {
                         actions.addCombatant(payload);
-                        setIsCreateModalOpen(false);
+                        if (!options?.stayOpen) {
+                            setIsCreateModalOpen(false);
+                        }
                     }, iconOptions: presets.icons, onCancel: () => setIsCreateModalOpen(false) }) }), _jsx(Modal, { isOpen: isSelectionModalOpen, onClose: handleCloseSelectionModal, ariaLabel: "Encounter selection", children: _jsx(EncounterManager, { onClose: handleCloseSelectionModal, disableClose: !selectedEncounterId }) })] }));
 };
 export default CombatTracker;

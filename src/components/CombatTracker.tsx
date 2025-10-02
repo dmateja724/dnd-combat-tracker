@@ -220,9 +220,11 @@ const CombatTracker = () => {
       </div>
       <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} ariaLabel="Add combatant form">
         <AddCombatantForm
-          onCreate={(payload) => {
+          onCreate={(payload, options) => {
             actions.addCombatant(payload);
-            setIsCreateModalOpen(false);
+            if (!options?.stayOpen) {
+              setIsCreateModalOpen(false);
+            }
           }}
           iconOptions={presets.icons}
           onCancel={() => setIsCreateModalOpen(false)}
