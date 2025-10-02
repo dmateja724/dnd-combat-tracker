@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Combatant, StatusEffectTemplate } from '../types';
 import { UpdateCombatantInput } from '../hooks/useCombatTracker';
+import Modal from './Modal';
 
 interface CombatantCardProps {
   combatant: Combatant;
@@ -41,12 +42,31 @@ const CombatantCard = ({
   const [noteDraft, setNoteDraft] = useState(combatant.note ?? '');
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [statusPanelOpen, setStatusPanelOpen] = useState(false);
-  const [selectedStatusId, setSelectedStatusId] = useState<string>(statusPresets[0]?.id ?? '');
+  const [selectedStatusId, setSelectedStatusId] = useState<string>(statusPresets[0]?.id ?? 'custom');
   const [customStatusLabel, setCustomStatusLabel] = useState('');
   const [customStatusIcon, setCustomStatusIcon] = useState('✦');
   const [customStatusColor, setCustomStatusColor] = useState('#ffb703');
   const [rounds, setRounds] = useState<number | ''>('');
   const [statusNote, setStatusNote] = useState('');
+
+  const resetStatusDraft = () => {
+    setSelectedStatusId(statusPresets[0]?.id ?? 'custom');
+    setRounds('');
+    setStatusNote('');
+    setCustomStatusLabel('');
+    setCustomStatusIcon('✦');
+    setCustomStatusColor('#ffb703');
+  };
+
+  const handleOpenStatusPanel = () => {
+    resetStatusDraft();
+    setStatusPanelOpen(true);
+  };
+
+  const closeStatusPanel = () => {
+    resetStatusDraft();
+    setStatusPanelOpen(false);
+  };
 
   useEffect(() => {
     setNoteDraft(combatant.note ?? '');
@@ -86,11 +106,7 @@ const CombatantCard = ({
     if (!template) return;
     const normalizedRounds = rounds === '' ? null : Math.max(0, Math.round(Number(rounds)));
     onAddStatus(template, normalizedRounds, statusNote.trim() || undefined);
-    setStatusPanelOpen(false);
-    setRounds('');
-    setStatusNote('');
-    setCustomStatusLabel('');
-    setCustomStatusIcon('✦');
+    closeStatusPanel();
   };
 
   const hpWidth = Math.max(0, Math.min(healthPercent, 100)) + '%';
@@ -193,8 +209,8 @@ const CombatantCard = ({
         <section className="status-section">
           <div className="status-head">
             <h4>Status Effects</h4>
-            <button type="button" className="ghost" onClick={() => setStatusPanelOpen((open) => !open)}>
-              {statusPanelOpen ? 'Close' : 'Add'}
+            <button type="button" className="ghost" onClick={handleOpenStatusPanel}>
+              Add
             </button>
           </div>
 
@@ -215,90 +231,6 @@ const CombatantCard = ({
               </button>
             ))}
           </div>
-
-          {statusPanelOpen ? (
-            <form className="status-form" onSubmit={handleStatusSubmit}>
-              <label>
-                Preset
-                <select
-                  value={selectedStatusId}
-                  onChange={(event) => setSelectedStatusId(event.target.value)}
-                >
-                  {statusPresets.map((preset) => (
-                    <option key={preset.id} value={preset.id}>
-                      {preset.icon} {preset.label}
-                    </option>
-                  ))}
-                  <option value="custom">Custom…</option>
-                </select>
-              </label>
-
-              {selectedStatusId === 'custom' ? (
-                <div className="custom-status-fields">
-                  <label>
-                    Label
-                    <input
-                      type="text"
-                      value={customStatusLabel}
-                      onChange={(event) => setCustomStatusLabel(event.target.value)}
-                      placeholder="Status name"
-                      required
-                    />
-                  </label>
-                  <label>
-                    Icon
-                    <input
-                      type="text"
-                      value={customStatusIcon}
-                      maxLength={2}
-                      onChange={(event) => setCustomStatusIcon(event.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Color
-                    <input
-                      type="color"
-                      value={customStatusColor}
-                      onChange={(event) => setCustomStatusColor(event.target.value)}
-                    />
-                  </label>
-                </div>
-              ) : null}
-
-              <label>
-                Rounds
-                <input
-                  type="number"
-                  min={0}
-                  value={rounds}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setRounds(value === '' ? '' : Number(value));
-                  }}
-                  placeholder="∞"
-                />
-              </label>
-
-              <label>
-                Note
-                <input
-                  type="text"
-                  value={statusNote}
-                  onChange={(event) => setStatusNote(event.target.value)}
-                  placeholder="Optional reminder"
-                />
-              </label>
-
-              <div className="status-actions">
-                <button type="submit" className="primary">
-                  Add Status
-                </button>
-                <button type="button" className="ghost" onClick={() => setStatusPanelOpen(false)}>
-                  Cancel
-                </button>
-              </div>
-            </form>
-          ) : null}
         </section>
 
         <section className="notes-section">
@@ -338,6 +270,99 @@ const CombatantCard = ({
           )}
         </section>
       </div>
+
+      <Modal
+        isOpen={statusPanelOpen}
+        onClose={closeStatusPanel}
+        ariaLabel={`Add status effect for ${combatant.name}`}
+      >
+        <div className="status-modal">
+          <div className="status-modal-head">
+            <h3>Add Status Effect</h3>
+            <button type="button" className="ghost" onClick={closeStatusPanel}>
+              Close
+            </button>
+          </div>
+          <form className="status-form" onSubmit={handleStatusSubmit}>
+            <label>
+              Preset
+              <select value={selectedStatusId} onChange={(event) => setSelectedStatusId(event.target.value)}>
+                {statusPresets.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.icon} {preset.label}
+                  </option>
+                ))}
+                <option value="custom">Custom…</option>
+              </select>
+            </label>
+
+            {selectedStatusId === 'custom' ? (
+              <div className="custom-status-fields">
+                <label>
+                  Label
+                  <input
+                    type="text"
+                    value={customStatusLabel}
+                    onChange={(event) => setCustomStatusLabel(event.target.value)}
+                    placeholder="Status name"
+                    required
+                  />
+                </label>
+                <label>
+                  Icon
+                  <input
+                    type="text"
+                    value={customStatusIcon}
+                    maxLength={2}
+                    onChange={(event) => setCustomStatusIcon(event.target.value)}
+                  />
+                </label>
+                <label>
+                  Color
+                  <input
+                    type="color"
+                    value={customStatusColor}
+                    onChange={(event) => setCustomStatusColor(event.target.value)}
+                  />
+                </label>
+              </div>
+            ) : null}
+
+            <label>
+              Rounds
+              <input
+                type="number"
+                min={0}
+                value={rounds}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setRounds(value === '' ? '' : Number(value));
+                }}
+                placeholder="∞"
+              />
+            </label>
+
+            <label>
+              Note
+              <input
+                type="text"
+                value={statusNote}
+                onChange={(event) => setStatusNote(event.target.value)}
+                placeholder="Optional reminder"
+              />
+            </label>
+
+            <div className="status-actions">
+              <button type="submit" className="primary">
+                Add Status
+              </button>
+              <button type="button" className="ghost" onClick={closeStatusPanel}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </Modal>
     </article>
   );
 };
