@@ -6,4 +6,5 @@ import './styles.css';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { EncounterProvider } from './context/EncounterContext';
-ReactDOM.createRoot(document.getElementById('root')).render(_jsx(React.StrictMode, { children: _jsx(BrowserRouter, { children: _jsx(AuthProvider, { children: _jsx(EncounterProvider, { children: _jsx(App, {}) }) }) }) }));
+import { CombatantLibraryProvider } from './context/CombatantLibraryContext';
+ReactDOM.createRoot(document.getElementById('root')).render(_jsx(React.StrictMode, { children: _jsx(BrowserRouter, { children: _jsx(AuthProvider, { children: _jsx(CombatantLibraryProvider, { children: _jsx(EncounterProvider, { children: _jsx(App, {}) }) }) }) }) }));
