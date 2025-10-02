@@ -58,18 +58,27 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
   const [formData, setFormData] = useState<FormState>(initialState);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
 
-  const { templates, isLoading, isMutating, error, refresh, saveTemplate, removeTemplate } = useCombatantLibrary();
+  const { templates, isLoading, isMutating, error, refresh, saveTemplate, updateTemplate, removeTemplate } =
+    useCombatantLibrary();
+
+  const editingTemplate = useMemo(
+    () => (editingTemplateId ? templates.find((template) => template.id === editingTemplateId) ?? null : null),
+    [editingTemplateId, templates]
+  );
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!formData.name.trim()) return;
     onCreate(toCombatantInput(formData));
     setFormData(initialState);
+    setEditingTemplateId(null);
     setFeedback(null);
   };
 
   const handleApplyTemplate = (template: CombatantTemplate, stayOpen = false) => {
+    setEditingTemplateId(null);
     onCreate(
       {
         name: template.name,
@@ -85,6 +94,7 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
   };
 
   const handleFillFromTemplate = (template: CombatantTemplate) => {
+    setEditingTemplateId(null);
     setFormData({
       name: template.name,
       type: template.type,
@@ -98,6 +108,18 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
     setLocalError(null);
   };
 
+  const handleEditTemplate = (template: CombatantTemplate) => {
+    handleFillFromTemplate(template);
+    setEditingTemplateId(template.id);
+    setFeedback('Editing "' + template.name + '" from the library.');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTemplateId(null);
+    setFeedback('Edit canceled.');
+    setLocalError(null);
+  };
+
   const handleSaveTemplate = async () => {
     if (!formData.name.trim()) {
       setLocalError('Enter a name before saving to the library.');
@@ -105,11 +127,21 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
     }
     setLocalError(null);
     setFeedback(null);
-    const created = await saveTemplate(toTemplateInput(formData));
-    if (created) {
-      setFeedback('Saved to library.');
+    const payload = toTemplateInput(formData);
+    if (editingTemplateId) {
+      const updated = await updateTemplate(editingTemplateId, payload);
+      if (updated) {
+        setFeedback('Template updated.');
+      } else {
+        setLocalError('Could not update combatant in the library.');
+      }
     } else {
-      setLocalError('Could not save combatant to the library.');
+      const created = await saveTemplate(payload);
+      if (created) {
+        setFeedback('Saved to library.');
+      } else {
+        setLocalError('Could not save combatant to the library.');
+      }
     }
   };
 
@@ -117,6 +149,17 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
     <form className="add-combatant" onSubmit={handleSubmit}>
       <div className="add-combatant-head">
         <h3>Add Combatant</h3>
+        {editingTemplateId ? (
+          <button
+            type="button"
+            className="ghost"
+            onClick={handleCancelEdit}
+            disabled={isMutating}
+            aria-label={editingTemplate ? 'Cancel editing ' + editingTemplate.name : 'Cancel editing current template'}
+          >
+            Cancel Edit
+          </button>
+        ) : null}
         {onCancel && (
           <button type="button" className="add-combatant-close" onClick={onCancel} aria-label="Close add combatant form">
             ×
@@ -166,9 +209,10 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
                       <button
                         type="button"
                         className="ghost"
-                        onClick={() => handleFillFromTemplate(template)}
+                        onClick={() => handleEditTemplate(template)}
+                        aria-pressed={editingTemplateId === template.id}
                       >
-                        Fill
+                        Edit
                       </button>
                       <button
                         type="button"
@@ -293,7 +337,7 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
               Add to Encounter
             </button>
             <button type="button" className="ghost" onClick={() => void handleSaveTemplate()} disabled={isMutating}>
-              {isMutating ? 'Saving…' : 'Save to Library'}
+              {isMutating ? 'Saving…' : editingTemplateId ? 'Update Template' : 'Save to Library'}
             </button>
           </div>
         </section>

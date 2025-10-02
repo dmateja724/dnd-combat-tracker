@@ -1,7 +1,7 @@
 import { jsx as _jsx } from "react/jsx-runtime";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from './AuthContext';
-import { createCombatantTemplate, deleteCombatantTemplate, listCombatantTemplates } from '../data/combatantLibrary';
+import { createCombatantTemplate, deleteCombatantTemplate, listCombatantTemplates, updateCombatantTemplate } from '../data/combatantLibrary';
 const CombatantLibraryContext = createContext(undefined);
 export const CombatantLibraryProvider = ({ children }) => {
     const { user } = useAuth();
@@ -63,6 +63,30 @@ export const CombatantLibraryProvider = ({ children }) => {
             setIsMutating(false);
         }
     }, [user]);
+    const updateTemplate = useCallback(async (id, input) => {
+        if (!user) {
+            setError('You must be signed in to edit combatants.');
+            return null;
+        }
+        setIsMutating(true);
+        setError(null);
+        try {
+            const updated = await updateCombatantTemplate(id, input);
+            if (!updated) {
+                throw new Error('Failed to update combatant template.');
+            }
+            setTemplates((current) => [...current.filter((template) => template.id !== updated.id), updated].sort((a, b) => a.name.localeCompare(b.name)));
+            return updated;
+        }
+        catch (err) {
+            console.error('Failed to update combatant template', err);
+            setError(err instanceof Error ? err.message : 'Failed to update combatant template');
+            return null;
+        }
+        finally {
+            setIsMutating(false);
+        }
+    }, [user]);
     const removeTemplate = useCallback(async (id) => {
         if (!user) {
             setError('You must be signed in to delete combatants.');
@@ -86,7 +110,7 @@ export const CombatantLibraryProvider = ({ children }) => {
             setIsMutating(false);
         }
     }, [user]);
-    const value = useMemo(() => ({ templates, isLoading, isMutating, error, refresh, saveTemplate, removeTemplate }), [error, isLoading, isMutating, refresh, removeTemplate, saveTemplate, templates]);
+    const value = useMemo(() => ({ templates, isLoading, isMutating, error, refresh, saveTemplate, updateTemplate, removeTemplate }), [error, isLoading, isMutating, refresh, removeTemplate, saveTemplate, templates, updateTemplate]);
     return _jsx(CombatantLibraryContext.Provider, { value: value, children: children });
 };
 export const useCombatantLibrary = () => {
