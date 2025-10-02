@@ -84,6 +84,35 @@ export const createCombatantTemplate = async (
   }
 };
 
+export const updateCombatantTemplate = async (
+  id: string,
+  input: CombatantTemplateInput
+): Promise<CombatantTemplate | null> => {
+  try {
+    const response = await fetch(`${API_BASE}/${id}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(input)
+    });
+
+    if (response.status === 401) {
+      throw new Error('Unauthorized');
+    }
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    const payload = parseTemplate(await response.json());
+    return payload;
+  } catch (error) {
+    console.warn('Failed to update combatant template', error);
+    return null;
+  }
+};
+
 export const deleteCombatantTemplate = async (id: string): Promise<boolean> => {
   try {
     const response = await fetch(`${API_BASE}/${id}`, {

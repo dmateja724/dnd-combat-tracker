@@ -49,7 +49,7 @@ const CombatantCard = ({
   const [customStatusColor, setCustomStatusColor] = useState('#ffb703');
   const [rounds, setRounds] = useState<number | ''>('');
   const [statusNote, setStatusNote] = useState('');
-  const { saveTemplate, isMutating } = useCombatantLibrary();
+  const { templates, saveTemplate, isMutating } = useCombatantLibrary();
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -145,6 +145,23 @@ const CombatantCard = ({
     }
   };
 
+  const normalizedNote = combatant.note ? combatant.note.trim() : '';
+
+  const isInLibrary = useMemo(() => {
+    return templates.some((template) => {
+      const templateNote = template.note ? template.note.trim() : '';
+      return (
+        template.name === combatant.name &&
+        template.type === combatant.type &&
+        template.defaultInitiative === combatant.initiative &&
+        template.maxHp === combatant.hp.max &&
+        (template.ac ?? null) === (combatant.ac ?? null) &&
+        template.icon === combatant.icon &&
+        templateNote === normalizedNote
+      );
+    });
+  }, [combatant.ac, combatant.hp.max, combatant.icon, combatant.initiative, combatant.name, combatant.type, normalizedNote, templates]);
+
   const saveButtonLabel =
     saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved!' : saveState === 'error' ? 'Retry Save' : 'Save to Library';
   const isSaveDisabled = saveState === 'saving' || isMutating;
@@ -171,14 +188,16 @@ const CombatantCard = ({
           </div>
         </div>
         <div className="card-actions">
-          <button
-            type="button"
-            className="ghost"
-            onClick={() => void handleSaveToLibrary()}
-            disabled={isSaveDisabled}
-          >
-            {saveButtonLabel}
-          </button>
+          {!isInLibrary ? (
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => void handleSaveToLibrary()}
+              disabled={isSaveDisabled}
+            >
+              {saveButtonLabel}
+            </button>
+          ) : null}
           <button type="button" className="ghost danger" onClick={onRemove}>
             Remove
           </button>

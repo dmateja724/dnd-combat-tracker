@@ -5,7 +5,8 @@ import type { CombatantTemplate, CombatantTemplateInput } from '../types';
 import {
   createCombatantTemplate,
   deleteCombatantTemplate,
-  listCombatantTemplates
+  listCombatantTemplates,
+  updateCombatantTemplate
 } from '../data/combatantLibrary';
 
 interface CombatantLibraryContextValue {
@@ -15,6 +16,7 @@ interface CombatantLibraryContextValue {
   error: string | null;
   refresh: () => Promise<void>;
   saveTemplate: (input: CombatantTemplateInput) => Promise<CombatantTemplate | null>;
+  updateTemplate: (id: string, input: CombatantTemplateInput) => Promise<CombatantTemplate | null>;
   removeTemplate: (id: string) => Promise<boolean>;
 }
 
@@ -87,6 +89,36 @@ export const CombatantLibraryProvider = ({ children }: { children: ReactNode }) 
     [user]
   );
 
+  const updateTemplate = useCallback(
+    async (id: string, input: CombatantTemplateInput) => {
+      if (!user) {
+        setError('You must be signed in to edit combatants.');
+        return null;
+      }
+      setIsMutating(true);
+      setError(null);
+      try {
+        const updated = await updateCombatantTemplate(id, input);
+        if (!updated) {
+          throw new Error('Failed to update combatant template.');
+        }
+        setTemplates((current) =>
+          [...current.filter((template) => template.id !== updated.id), updated].sort((a, b) =>
+            a.name.localeCompare(b.name)
+          )
+        );
+        return updated;
+      } catch (err) {
+        console.error('Failed to update combatant template', err);
+        setError(err instanceof Error ? err.message : 'Failed to update combatant template');
+        return null;
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    [user]
+  );
+
   const removeTemplate = useCallback(
     async (id: string) => {
       if (!user) {
@@ -113,8 +145,8 @@ export const CombatantLibraryProvider = ({ children }: { children: ReactNode }) 
   );
 
   const value = useMemo<CombatantLibraryContextValue>(
-    () => ({ templates, isLoading, isMutating, error, refresh, saveTemplate, removeTemplate }),
-    [error, isLoading, isMutating, refresh, removeTemplate, saveTemplate, templates]
+    () => ({ templates, isLoading, isMutating, error, refresh, saveTemplate, updateTemplate, removeTemplate }),
+    [error, isLoading, isMutating, refresh, removeTemplate, saveTemplate, templates, updateTemplate]
   );
 
   return <CombatantLibraryContext.Provider value={value}>{children}</CombatantLibraryContext.Provider>;

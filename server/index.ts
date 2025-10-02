@@ -190,6 +190,20 @@ const insertTemplate = db.prepare(
    ) VALUES (@id, @userId, @name, @type, @defaultInitiative, @maxHp, @ac, @icon, @note, @createdAt, @updatedAt)`
 );
 
+const updateTemplateStmt = db.prepare(
+  `UPDATE combatant_templates
+   SET
+     name = @name,
+     type = @type,
+     default_initiative = @defaultInitiative,
+     max_hp = @maxHp,
+     ac = @ac,
+     icon = @icon,
+     note = @note,
+     updated_at = @updatedAt
+   WHERE id = @id AND user_id = @userId`
+);
+
 const deleteTemplateStmt = db.prepare('DELETE FROM combatant_templates WHERE id = ? AND user_id = ?');
 
 const defaultEncounterState = JSON.stringify({ combatants: [], activeCombatantId: null, round: 1 });
@@ -655,6 +669,98 @@ app.post('/api/combatants', requireAuth, (req, res) => {
   } catch (error) {
     console.error('Failed to save combatant template', error);
     res.status(500).json({ error: 'Failed to save combatant template.' });
+  }
+});
+
+app.put('/api/combatants/:id', requireAuth, (req, res) => {
+  const { userId } = req as AuthenticatedRequest;
+  const templateId = req.params.id;
+
+  const template = ensureTemplateOwnership(templateId, userId);
+  if (!template) {
+    res.status(404).json({ error: 'Combatant template not found.' });
+    return;
+  }
+
+  const nameInput = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+  const typeInput = req.body?.type;
+  const initInput = req.body?.defaultInitiative;
+  const maxHpInput = req.body?.maxHp;
+  const acInput = req.body?.ac;
+  const iconInput = typeof req.body?.icon === 'string' ? req.body.icon : '';
+  const noteInput = typeof req.body?.note === 'string' ? req.body.note.trim() : '';
+
+  if (!nameInput) {
+    res.status(400).json({ error: 'Name is required.' });
+    return;
+  }
+
+  if (typeof typeInput !== 'string' || !combatantTypes.has(typeInput)) {
+    res.status(400).json({ error: 'Invalid combatant type.' });
+    return;
+  }
+
+  const parsedInitiative = Number(initInput);
+  if (!Number.isFinite(parsedInitiative)) {
+    res.status(400).json({ error: 'Invalid initiative value.' });
+    return;
+  }
+
+  const parsedMaxHp = Number(maxHpInput);
+  if (!Number.isFinite(parsedMaxHp) || parsedMaxHp <= 0) {
+    res.status(400).json({ error: 'Max HP must be a positive number.' });
+    return;
+  }
+
+  const parsedAc = acInput === undefined || acInput === null || acInput === '' ? null : Number(acInput);
+  if (parsedAc !== null && (!Number.isFinite(parsedAc) || parsedAc < 0)) {
+    res.status(400).json({ error: 'AC must be a non-negative number.' });
+    return;
+  }
+
+  const icon = iconInput.trim() || template.icon || '?';
+  const normalizedAc = parsedAc === null ? null : Math.round(parsedAc);
+  const normalizedInitiative = Math.round(parsedInitiative);
+  const normalizedMaxHp = Math.max(1, Math.round(parsedMaxHp));
+  const normalizedNote = noteInput || null;
+  const now = new Date().toISOString();
+
+  try {
+    const result = updateTemplateStmt.run({
+      id: templateId,
+      userId,
+      name: nameInput,
+      type: typeInput,
+      defaultInitiative: normalizedInitiative,
+      maxHp: normalizedMaxHp,
+      ac: normalizedAc,
+      icon,
+      note: normalizedNote,
+      updatedAt: now
+    });
+
+    if (result.changes === 0) {
+      res.status(404).json({ error: 'Combatant template not found.' });
+      return;
+    }
+
+    res.json(
+      serializeTemplate({
+        id: templateId,
+        name: nameInput,
+        type: typeInput,
+        default_initiative: normalizedInitiative,
+        max_hp: normalizedMaxHp,
+        ac: normalizedAc,
+        icon,
+        note: normalizedNote,
+        created_at: template.created_at,
+        updated_at: now
+      })
+    );
+  } catch (error) {
+    console.error('Failed to update combatant template', error);
+    res.status(500).json({ error: 'Failed to update combatant template.' });
   }
 });
 

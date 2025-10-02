@@ -84,32 +84,15 @@ const CombatTracker = () => {
   return (
     <div className="tracker-shell">
       <header className="tracker-header">
-        <div>
-          <h1>D&D Combat Tracker</h1>
-          <p className="tracker-subtitle">Keep the encounter flowing with initiative, damage, and status tracking.</p>
-          <div className="dice-tray" aria-live="polite">
-            <div className="dice-buttons">
-              {[20, 12, 10, 8, 6, 4].map((sides) => (
-                <button
-                  key={'die-' + sides}
-                  type="button"
-                  className="ghost"
-                  onClick={() => rollDie(sides)}
-                >
-                  d{sides}
-                </button>
-              ))}
-            </div>
-            <p className={`dice-result${lastRoll ? '' : ' is-empty'}`}>
-              {lastRoll ? `Rolled d${lastRoll.die}: ${lastRoll.result}` : 'Roll a die to see the result here.'}
-            </p>
+        <div className="tracker-top-row">
+          <div className="tracker-heading">
+            <h1>D&D Combat Tracker</h1>
+            <p className="tracker-subtitle">Keep the encounter flowing with initiative, damage, and status tracking.</p>
           </div>
-        </div>
-        <div className="tracker-round">
-          <span className="label">Round</span>
-          <span className="value">{state.round}</span>
-        </div>
-        <div className="tracker-meta">
+          <div className="tracker-round">
+            <span className="label">Round</span>
+            <span className="value">{state.round}</span>
+          </div>
           <div className="session-info">
             <span className="session-label">Encounter</span>
             <span className="session-value">{selectedEncounter?.name ?? 'Untitled Encounter'}</span>
@@ -124,14 +107,23 @@ const CombatTracker = () => {
               Sign Out
             </button>
           </div>
-          <div className="turn-controls">
-            <button type="button" onClick={actions.rewindTurn} className="ghost">
-              ⏮ Prev
-            </button>
-            <button type="button" onClick={actions.advanceTurn} className="primary">
-              Next ⏭
-            </button>
+        </div>
+        <div className="dice-tray" aria-live="polite">
+          <div className="dice-buttons">
+            {[20, 12, 10, 8, 6, 4].map((sides) => (
+              <button
+                key={'die-' + sides}
+                type="button"
+                className="ghost"
+                onClick={() => rollDie(sides)}
+              >
+                d{sides}
+              </button>
+            ))}
           </div>
+          <p className={`dice-result${lastRoll ? '' : ' is-empty'}`}>
+            {lastRoll ? `Rolled d${lastRoll.die}: ${lastRoll.result}` : 'Roll a die to see the result here.'}
+          </p>
         </div>
       </header>
 
@@ -167,6 +159,14 @@ const CombatTracker = () => {
         </aside>
 
         <section className="combatant-strip">
+          <div className="turn-controls turn-controls--carousel">
+            <button type="button" onClick={actions.rewindTurn} className="ghost">
+              ⏮ Prev
+            </button>
+            <button type="button" onClick={actions.advanceTurn} className="primary">
+              Next ⏭
+            </button>
+          </div>
           {state.combatants.length === 0 ? (
             <div className="empty-state">
               <h3>No combatants yet</h3>
