@@ -1,5 +1,7 @@
 # Node / npm
 node_modules/
+.pnpm-store/
+.npm/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -7,12 +9,22 @@ pnpm-debug.log*
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
+
+# Task runners & caches
+.turbo/
+.cache/
+tmp/
+temp/
+
+# Data
 /data/
 
 # Build output
 /dist
 /.vite
 .vite-inspect
+/build
+dist-ssr/
 
 # Editor configs
 *.swp
@@ -22,9 +34,12 @@ pnpm-lock.yaml
 Thumbs.db
 .idea/
 .vscode/
+.history/
+.vs/
 *.iml
 *.sublime-workspace
 *.sublime-project
+*.code-workspace
 
 # TypeScript
 *.tsbuildinfo
@@ -32,11 +47,18 @@ Thumbs.db
 # Coverage / test output
 coverage/
 *.lcov
+coverage-*.json
+.nyc_output/
+.playwright-report/
+test-results/
 
 # Local environment
 .env
 .env.*
 !.env.example
+.env.local
+.envrc
+.direnv/
 
 # Mac/Windows
 Icon?
@@ -45,3 +67,18 @@ oh-my-zsh*
 
 # Misc
 *.local
+*.tgz
+logs/
+
+# Docker
+docker-compose.override.yml
+docker-compose.local.yml
+.docker/
+*.tar
+*.tar.gz
+
+# Databases
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
