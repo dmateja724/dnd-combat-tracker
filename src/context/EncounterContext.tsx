@@ -24,15 +24,27 @@ interface EncounterContextValue {
 
 const EncounterContext = createContext<EncounterContextValue | undefined>(undefined);
 
+const ENCOUNTER_STORAGE_KEY = 'combat-tracker:selectedEncounterId';
+
+const readStoredEncounterId = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  return window.localStorage.getItem(ENCOUNTER_STORAGE_KEY);
+};
+
 export const EncounterProvider = ({ children }: { children: ReactNode }) => {
-  const { user } = useAuth();
+  const { user, isBootstrapping } = useAuth();
   const [encounters, setEncounters] = useState<EncounterSummary[]>([]);
-  const [selectedEncounterId, setSelectedEncounterId] = useState<string | null>(null);
+  const [selectedEncounterId, setSelectedEncounterId] = useState<string | null>(() => readStoredEncounterId());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refreshEncounters = useCallback(async () => {
     if (!user) {
+      if (isBootstrapping) {
+        return;
+      }
       setEncounters([]);
       setSelectedEncounterId(null);
       setIsLoading(false);
@@ -45,8 +57,14 @@ export const EncounterProvider = ({ children }: { children: ReactNode }) => {
       const list = await listEncounters();
       setEncounters(list);
       setSelectedEncounterId((current) => {
-        if (!current) return null;
-        return list.some((encounter) => encounter.id === current) ? current : null;
+        if (current && list.some((encounter) => encounter.id === current)) {
+          return current;
+        }
+        const stored = readStoredEncounterId();
+        if (stored && list.some((encounter) => encounter.id === stored)) {
+          return stored;
+        }
+        return null;
       });
     } catch (err) {
       console.error('Failed to refresh encounters', err);
@@ -56,16 +74,40 @@ export const EncounterProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [isBootstrapping, user]);
 
   useEffect(() => {
+    if (isBootstrapping) {
+      return;
+    }
     if (user) {
       void refreshEncounters();
     } else {
       setEncounters([]);
       setSelectedEncounterId(null);
     }
-  }, [refreshEncounters, user]);
+  }, [isBootstrapping, refreshEncounters, user]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (selectedEncounterId) {
+      window.localStorage.setItem(ENCOUNTER_STORAGE_KEY, selectedEncounterId);
+    } else {
+      window.localStorage.removeItem(ENCOUNTER_STORAGE_KEY);
+    }
+  }, [selectedEncounterId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== ENCOUNTER_STORAGE_KEY) return;
+      setSelectedEncounterId(event.newValue);
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
 
   const selectEncounter = useCallback((id: string | null) => {
     setSelectedEncounterId(id);

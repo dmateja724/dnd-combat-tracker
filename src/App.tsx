@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import CombatTracker from './components/CombatTracker';
+import CombatantViewer from './components/CombatantViewer';
 import SignInPage from './pages/SignIn';
 import SignUpPage from './pages/SignUp';
 import { useAuth } from './context/AuthContext';
@@ -59,6 +60,14 @@ const App = () => {
         element={
           <RequireAuth>
             <CombatTracker />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/viewer"
+        element={
+          <RequireAuth>
+            <CombatantViewer />
           </RequireAuth>
         }
       />

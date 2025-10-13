@@ -63,6 +63,147 @@ button {
   width: 100%;
 }
 
+.viewer-shell {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(24px, 4vw, 36px);
+  min-height: clamp(520px, 85vh, 960px);
+}
+
+.viewer-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: clamp(16px, 3vw, 24px);
+}
+
+.viewer-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 240px;
+}
+
+.viewer-heading h1 {
+  font-family: 'Unbounded', 'Inter', sans-serif;
+  font-size: clamp(24px, 4vw, 32px);
+  letter-spacing: 0.05em;
+}
+
+.viewer-subtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.viewer-meta {
+  align-items: center;
+  background: var(--accent-soft);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+  min-width: 180px;
+  padding: 12px 20px;
+  text-align: center;
+}
+
+.viewer-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.viewer-value {
+  font-family: 'Unbounded', 'Inter', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  max-width: 240px;
+  word-break: break-word;
+}
+
+.viewer-main {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.viewer-main .empty-state {
+  margin: auto;
+  max-width: 420px;
+  text-align: center;
+}
+
+.viewer-carousel {
+  width: 100%;
+  max-width: none;
+  min-height: clamp(420px, 70vh, 760px);
+  padding: clamp(32px, 6vw, 72px) clamp(20px, 6vw, 64px) clamp(48px, 8vw, 96px);
+}
+
+.viewer-shell .combatant-carousel-item {
+  width: clamp(260px, 44vw, 420px);
+}
+
+.viewer-card {
+  pointer-events: none;
+}
+
+.viewer-card .status-section {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.viewer-avatar {
+  cursor: default;
+}
+
+.viewer-avatar:hover {
+  border-color: transparent;
+  transform: none;
+}
+
+.viewer-hp-block {
+  gap: 12px;
+}
+
+.hp-hidden {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hp-hidden-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.viewer-status-section .status-chip {
+  cursor: default;
+}
+
+@media (max-width: 640px) {
+  .viewer-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .viewer-meta {
+    width: 100%;
+  }
+}
+
 .tracker-header {
   display: flex;
   flex-direction: column;
@@ -202,6 +343,11 @@ button {
   font-size: 14px;
   color: var(--text-secondary);
   text-align: left;
+}
+
+.session-info--viewer {
+  align-items: center;
+  text-align: center;
 }
 
 .tracker-top-row .session-info:first-of-type {

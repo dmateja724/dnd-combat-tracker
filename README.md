@@ -10,6 +10,7 @@ A modern React + Vite encounter manager for tabletop combat. Sign in, build enco
 - Saved combatant library you can create, edit, and reuse from the add form or any combatant card.
 - Encounter library per account with modal-driven create/rename/delete flows, instant switching, and automatic persistence.
 - Dice tray for common polyhedral rolls plus rewind/advance turn controls, backed by secure email/password auth with HTTP-only cookies.
+- Pop-out player viewer window that mirrors the active encounter so players can track turns without touching the GM screen.
 
 ## Tech Stack
 
@@ -80,6 +81,12 @@ The accompanying `docker-compose.yml` ties both together and persists the SQLite
 ```
 docker compose build
 JWT_SECRET=supersecret docker compose up -d
+```
+
+You can also run the included helper script, which builds the images and redeploys the stack in one step:
+
+```
+npm run deploy
 ```
 
 The API listens on port 4000 inside the compose network, the frontend on port 80, and `./data` is mounted into the API container so database files survive restarts. Adjust Traefik labels or networks in `docker-compose.yml` to match your infrastructure.
