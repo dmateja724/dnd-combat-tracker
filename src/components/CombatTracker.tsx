@@ -24,6 +24,7 @@ const CombatTracker = () => {
   const [lastRoll, setLastRoll] = useState<{ die: number; result: number } | null>(null);
   const initiativeScrollRef = useRef<HTMLDivElement | null>(null);
   const initiativeRefs = useRef(new Map<string, HTMLLIElement>());
+  const viewerWindowRef = useRef<Window | null>(null);
 
   const handleAddStatus = (combatantId: string, template: StatusEffectTemplate, rounds: number | null, note?: string) => {
     actions.addStatus(combatantId, template, rounds, note);
@@ -55,6 +56,15 @@ const CombatTracker = () => {
     setIsSelectionModalOpen(!selectedEncounterId);
   }, [selectedEncounterId]);
 
+  useEffect(() => {
+    return () => {
+      const popup = viewerWindowRef.current;
+      if (popup && !popup.closed) {
+        popup.close();
+      }
+    };
+  }, []);
+
   const handleCloseSelectionModal = () => {
     if (!selectedEncounterId) return;
     setIsSelectionModalOpen(false);
@@ -64,6 +74,42 @@ const CombatTracker = () => {
     const result = Math.floor(Math.random() * sides) + 1;
     setLastRoll({ die: sides, result });
   };
+
+  const openViewerWindow = () => {
+    if (typeof window === 'undefined') return;
+
+    const existing = viewerWindowRef.current;
+    if (existing && existing.closed) {
+      viewerWindowRef.current = null;
+    } else if (existing && !existing.closed) {
+      existing.focus();
+      return;
+    }
+
+    const screenWidth = window.screen?.availWidth ?? window.innerWidth;
+    const screenHeight = window.screen?.availHeight ?? window.innerHeight;
+    const width = Math.min(1200, screenWidth);
+    const height = Math.min(900, screenHeight);
+    const left = window.screenX + Math.max(0, (window.outerWidth - width) / 2);
+    const top = window.screenY + Math.max(0, (window.outerHeight - height) / 2);
+    const features = [
+      'popup=yes',
+      'resizable=yes',
+      'scrollbars=yes',
+      `width=${Math.round(width)}`,
+      `height=${Math.round(height)}`,
+      `left=${Math.round(left)}`,
+      `top=${Math.round(top)}`
+    ].join(',');
+    const popup = window.open('/viewer', 'combatant-viewer', features);
+    if (!popup) {
+      window.alert('Allow pop-ups to open the player view.');
+      return;
+    }
+    viewerWindowRef.current = popup;
+    popup.focus();
+  };
+
 
   const activeIndex = state.activeCombatantId
     ? state.combatants.findIndex((combatant) => combatant.id === state.activeCombatantId)
@@ -105,6 +151,20 @@ const CombatTracker = () => {
             <span className="session-value">{user?.email}</span>
             <button type="button" className="ghost" onClick={() => void handleSignOut()}>
               Sign Out
+            </button>
+          </div>
+          <div className="session-info session-info--viewer">
+            <span className="session-label">Player View</span>
+            {!selectedEncounterId && (
+              <span className="session-value">Select an encounter</span>
+            )}
+            <button
+              type="button"
+              className="ghost"
+              onClick={openViewerWindow}
+              disabled={!selectedEncounterId}
+            >
+              Open Viewer
             </button>
           </div>
         </div>

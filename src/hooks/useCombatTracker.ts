@@ -44,6 +44,14 @@ type TrackerAction =
 
 type TrackerState = EncounterState;
 
+interface TrackerBroadcastMessage {
+  type: 'hydrate';
+  payload: EncounterState;
+  source: string;
+}
+
+const BROADCAST_CHANNEL_PREFIX = 'combat-tracker:encounter:';
+
 const sortCombatants = (combatants: Combatant[]) =>
   [...combatants].sort((a, b) => {
     if (b.initiative === a.initiative) {
@@ -222,6 +230,13 @@ export const useCombatTracker = (encounterId: string | null) => {
   }
 
   const [state, dispatch] = useReducer(trackerReducer, initialEncounterRef.current);
+  const instanceIdRef = useRef<string>('');
+  if (!instanceIdRef.current) {
+    instanceIdRef.current = nanoid(6);
+  }
+  const channelRef = useRef<BroadcastChannel | null>(null);
+  const skipSaveRef = useRef(false);
+  const skipBroadcastRef = useRef(false);
   const hasHydratedRef = useRef(false);
   const [isHydrating, setIsHydrating] = useState(true);
 
@@ -254,9 +269,78 @@ export const useCombatTracker = (encounterId: string | null) => {
   }, [encounterId]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (!('BroadcastChannel' in window)) {
+      if (channelRef.current) {
+        channelRef.current.close();
+        channelRef.current = null;
+      }
+      return;
+    }
+    if (!encounterId) {
+      if (channelRef.current) {
+        channelRef.current.close();
+        channelRef.current = null;
+      }
+      return;
+    }
+
+    const channelName = BROADCAST_CHANNEL_PREFIX + encounterId;
+    const channel = new BroadcastChannel(channelName);
+    channelRef.current = channel;
+
+    const handleMessage = (event: MessageEvent<TrackerBroadcastMessage>) => {
+      const message = event.data;
+      if (!message || typeof message !== 'object') return;
+      if (message.type !== 'hydrate') return;
+      if (message.source === instanceIdRef.current) return;
+      skipSaveRef.current = true;
+      skipBroadcastRef.current = true;
+      dispatch({ type: 'hydrate', payload: message.payload });
+    };
+
+    channel.addEventListener('message', handleMessage);
+
+    return () => {
+      channel.removeEventListener('message', handleMessage);
+      channel.close();
+      if (channelRef.current === channel) {
+        channelRef.current = null;
+      }
+    };
+  }, [encounterId]);
+
+  useEffect(() => {
     if (!hasHydratedRef.current) return;
     if (!encounterId) return;
+    if (skipSaveRef.current) {
+      skipSaveRef.current = false;
+      return;
+    }
     void saveEncounter(encounterId, state);
+  }, [encounterId, state]);
+
+  useEffect(() => {
+    if (!hasHydratedRef.current) return;
+    if (!encounterId) return;
+    if (skipBroadcastRef.current) {
+      skipBroadcastRef.current = false;
+      return;
+    }
+    const channel = channelRef.current;
+    if (!channel) return;
+    try {
+      const message: TrackerBroadcastMessage = {
+        type: 'hydrate',
+        payload: state,
+        source: instanceIdRef.current
+      };
+      channel.postMessage(message);
+    } catch (error) {
+      console.warn('Failed to broadcast encounter update', error);
+    }
   }, [encounterId, state]);
 
   const addCombatant = useCallback((input: AddCombatantInput) => {
