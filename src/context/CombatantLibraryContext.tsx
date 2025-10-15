@@ -18,6 +18,7 @@ interface CombatantLibraryContextValue {
   saveTemplate: (input: CombatantTemplateInput) => Promise<CombatantTemplate | null>;
   updateTemplate: (id: string, input: CombatantTemplateInput) => Promise<CombatantTemplate | null>;
   removeTemplate: (id: string) => Promise<boolean>;
+  importTemplates: (inputs: CombatantTemplateInput[]) => Promise<{ imported: number; failed: number }>;
 }
 
 const CombatantLibraryContext = createContext<CombatantLibraryContextValue | undefined>(undefined);
@@ -144,9 +145,79 @@ export const CombatantLibraryProvider = ({ children }: { children: ReactNode }) 
     [user]
   );
 
+  const importTemplates = useCallback(
+    async (inputs: CombatantTemplateInput[]) => {
+      if (!user) {
+        setError('You must be signed in to import combatants.');
+        return { imported: 0, failed: inputs.length };
+      }
+      if (inputs.length === 0) {
+        return { imported: 0, failed: 0 };
+      }
+
+      setIsMutating(true);
+      setError(null);
+
+      const created: CombatantTemplate[] = [];
+      let failed = 0;
+      let processed = 0;
+
+      try {
+        for (const input of inputs) {
+          processed += 1;
+          const template = await createCombatantTemplate(input);
+          if (template) {
+            created.push(template);
+          } else {
+            failed += 1;
+          }
+        }
+
+        if (created.length > 0) {
+          setTemplates((current) => {
+            const next = [...current];
+            for (const template of created) {
+              const existingIndex = next.findIndex((candidate) => candidate.id === template.id);
+              if (existingIndex === -1) {
+                next.push(template);
+              } else {
+                next[existingIndex] = template;
+              }
+            }
+            return next.sort((a, b) => a.name.localeCompare(b.name));
+          });
+        }
+
+        if (failed > 0) {
+          setError(failed === inputs.length ? 'Failed to import combatant templates.' : 'Some combatants could not be imported.');
+        }
+
+        return { imported: created.length, failed };
+      } catch (err) {
+        console.error('Failed to import combatant templates', err);
+        setError(err instanceof Error ? err.message : 'Failed to import combatant templates');
+        const remainingFailures = inputs.length - processed;
+        return { imported: created.length, failed: failed + Math.max(remainingFailures, 0) };
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    [user]
+  );
+
   const value = useMemo<CombatantLibraryContextValue>(
-    () => ({ templates, isLoading, isMutating, error, refresh, saveTemplate, updateTemplate, removeTemplate }),
-    [error, isLoading, isMutating, refresh, removeTemplate, saveTemplate, templates, updateTemplate]
+    () => ({
+      templates,
+      isLoading,
+      isMutating,
+      error,
+      refresh,
+      saveTemplate,
+      updateTemplate,
+      removeTemplate,
+      importTemplates
+    }),
+    [error, importTemplates, isLoading, isMutating, refresh, removeTemplate, saveTemplate, templates, updateTemplate]
   );
 
   return <CombatantLibraryContext.Provider value={value}>{children}</CombatantLibraryContext.Provider>;

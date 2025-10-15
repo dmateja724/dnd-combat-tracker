@@ -53,6 +53,12 @@ export interface CombatantTemplateInput {
   note?: string;
 }
 
+export interface CombatantLibraryExport {
+  version: 1;
+  exportedAt: string;
+  templates: CombatantTemplateInput[];
+}
+
 export interface EncounterState {
   combatants: Combatant[];
   activeCombatantId: string | null;
