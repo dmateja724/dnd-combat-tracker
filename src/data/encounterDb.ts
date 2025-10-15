@@ -1,4 +1,4 @@
-import type { Combatant, EncounterState, StatusEffectInstance } from '../types';
+import type { Combatant, CombatLogEntry, EncounterState, StatusEffectInstance } from '../types';
 
 const API_BASE = '/api/encounters';
 
@@ -31,6 +31,36 @@ const coerceStatus = (value: unknown): StatusEffectInstance | null => {
     instanceId: value.instanceId,
     remainingRounds: value.remainingRounds,
     note: typeof value.note === 'string' ? value.note : undefined
+  };
+};
+
+const coerceLogEntry = (value: unknown): CombatLogEntry | null => {
+  if (!isRecord(value)) return null;
+  if (typeof value.id !== 'string') return null;
+  if (
+    value.type !== 'info' &&
+    value.type !== 'damage' &&
+    value.type !== 'heal' &&
+    value.type !== 'turn' &&
+    value.type !== 'status-add' &&
+    value.type !== 'status-remove' &&
+    value.type !== 'combatant-add' &&
+    value.type !== 'combatant-remove'
+  ) {
+    return null;
+  }
+  if (typeof value.message !== 'string') return null;
+  if (typeof value.timestamp !== 'string') return null;
+  if (typeof value.round !== 'number') return null;
+
+  return {
+    id: value.id,
+    type: value.type,
+    message: value.message,
+    timestamp: value.timestamp,
+    round: value.round,
+    combatantId: typeof value.combatantId === 'string' ? value.combatantId : undefined,
+    amount: typeof value.amount === 'number' ? value.amount : undefined
   };
 };
 
@@ -70,7 +100,14 @@ const sanitizeEncounter = (value: EncounterState): EncounterState => ({
   combatants: value.combatants.map((combatant) => ({
     ...combatant,
     statuses: Array.isArray(combatant.statuses) ? combatant.statuses : []
-  }))
+  })),
+  log: Array.isArray(value.log)
+    ? value.log
+        .map((entry) =>
+          coerceLogEntry(entry)
+        )
+        .filter((entry): entry is CombatLogEntry => entry !== null)
+    : []
 });
 
 const parseEncounter = (value: unknown): EncounterState | null => {
@@ -90,12 +127,18 @@ const parseEncounter = (value: unknown): EncounterState | null => {
     ? (value.activeCombatantId as EncounterState['activeCombatantId'])
     : null;
   const startedAt = typeof value.startedAt === 'string' ? value.startedAt : undefined;
+  const log = Array.isArray(value.log)
+    ? value.log
+        .map((candidate) => coerceLogEntry(candidate))
+        .filter((candidate): candidate is CombatLogEntry => candidate !== null)
+    : [];
 
   return sanitizeEncounter({
     combatants,
     activeCombatantId,
     round,
-    startedAt
+    startedAt,
+    log
   });
 };
 
