@@ -8,7 +8,8 @@ A modern React + Vite encounter manager for tabletop combat. Sign in, build enco
 - Combatant cards with quick damage/heal controls, health bars, AC badges, notes, and status summaries.
 - Status effect panel with preset conditions, fully custom effects, optional round timers, and automatic decrement when rounds advance.
 - Dedicated attack resolution modal to pick an attacker and target, choose damage type, apply damage, and log the outcome automatically.
-- Saved combatant library you can create, edit, reuse, export to JSON, and restore via import.
+- Saved combatant library you can create, edit, and reuse across encounters.
+- Full account backup from the account menu that zips your combatant library plus every encounter (including combat logs), with one-click restore support.
 - Encounter library per account with modal-driven create/rename/delete flows, instant switching, and automatic persistence.
 - Dice tray for common polyhedral rolls plus rewind/advance turn controls, backed by secure email/password auth with HTTP-only cookies.
 - Pop-out combat log viewer that mirrors every action (attacks, damage, healing, statuses, turns) with persistent history per encounter.
@@ -62,33 +63,15 @@ PORT=4100 JWT_SECRET=supersecret npm run server
 
 5. Sign up or sign in inside the app, create an encounter, add combatants, then use the **Attack** action or quick damage buttons to drive the turn-by-turn flow while the combat log records every event.
 
-## Combatant Library Export & Import
+## Account Backup & Restore
 
-- Open the **Add Combatant** form and use the buttons above the saved combatant list.
-- `Export JSON` downloads your current library as `combatant-library-YYYY-MM-DD.json`. The payload includes a `version` field (currently `1`) plus the templates.
-- `Import JSON` is available when your library is empty. Choose a previously exported file to bulk-create the listed templates.
-- Invalid entries in the file are skipped; successful imports report how many combatants were restored.
-- You must be signed in for export or import to succeed.
-
-Example export payload:
-
-```json
-{
-  "version": 1,
-  "exportedAt": "2024-05-26T18:17:42.123Z",
-  "templates": [
-    {
-      "name": "Goblin Raider",
-      "type": "enemy",
-      "defaultInitiative": 12,
-      "maxHp": 7,
-      "ac": 15,
-      "icon": "👺",
-      "note": "Pack tactics; retreats at half HP."
-    }
-  ]
-}
-```
+- Open the tracker’s account (☰) menu and choose **Export Account** to download a ZIP file (named `combat-tracker-backup-YYYY-MM-DD.zip`). It bundles:
+  - `combatant-library.json` – all saved templates.
+  - `encounters/*.json` – one file per encounter with full combat state and log.
+  - `metadata.json` – backup metadata (version, counts, timestamp).
+- Choose **Import Account** from the same menu (or from the empty encounter selector) to restore a backup. The upload flow replaces your current encounters and combatant library, refreshes the UI, and selects the first restored encounter automatically.
+- Warnings are displayed in-app if individual files cannot be parsed so you know what needs attention.
+- Imports require confirmation because they overwrite existing data; exports and imports both run client-side in the browser.
 
 ## Build & Preview
 

@@ -1,5 +1,7 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { useEncounterContext } from '../context/EncounterContext';
+import { useCombatantLibrary } from '../context/CombatantLibraryContext';
+import { restoreAccountFromFile } from '../utils/accountBackup';
 
 interface EncounterManagerProps {
   onClose?: () => void;
@@ -21,6 +23,9 @@ const EncounterManager = ({ onClose, disableClose = false }: EncounterManagerPro
   const [encounterName, setEncounterName] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isImportingAccount, setIsImportingAccount] = useState(false);
+  const accountImportInputRef = useRef<HTMLInputElement | null>(null);
+  const { refresh: refreshCombatantLibrary } = useCombatantLibrary();
 
   useEffect(() => {
     void refreshEncounters();
@@ -72,8 +77,63 @@ const EncounterManager = ({ onClose, disableClose = false }: EncounterManagerPro
     }
   };
 
+  const handleImportAccountClick = () => {
+    if (isImportingAccount) return;
+    const input = accountImportInputRef.current;
+    if (!input) return;
+    input.value = '';
+    input.click();
+  };
+
+  const handleAccountImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) {
+      return;
+    }
+    if (typeof window === 'undefined') {
+      console.warn('Import is only available in the browser.');
+      return;
+    }
+    const confirmed = window.confirm(
+      'Importing a backup will replace your current combatant library and encounters. Continue?'
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setIsImportingAccount(true);
+    selectEncounter(null);
+    try {
+      const { summary, warnings } = await restoreAccountFromFile(file, {
+        refreshCombatantLibrary,
+        refreshEncounters,
+        selectEncounter
+      });
+
+      if (warnings.length > 0) {
+        window.alert(`${summary}\n\nWarnings:\n- ${warnings.join('\n- ')}`);
+      } else {
+        window.alert(summary);
+      }
+    } catch (error) {
+      console.error('Failed to import account archive', error);
+      const message = error instanceof Error ? error.message : 'Unknown error occurred during import.';
+      window.alert('Could not import account: ' + message);
+    } finally {
+      setIsImportingAccount(false);
+    }
+  };
+
   return (
     <div className="auth-card encounter-manager">
+      <input
+        ref={accountImportInputRef}
+        type="file"
+        accept=".zip,application/zip,application/x-zip-compressed"
+        onChange={(event) => void handleAccountImportFile(event)}
+        style={{ display: 'none' }}
+      />
       <h1>Select Encounter</h1>
       <p className="auth-subtitle">Choose a saved encounter or create a fresh one for your party.</p>
       {(error || formError) && <p className="auth-error">{formError ?? error}</p>}
@@ -105,7 +165,19 @@ const EncounterManager = ({ onClose, disableClose = false }: EncounterManagerPro
         {isLoading && encounters.length === 0 ? (
           <p className="muted">Loading encounters…</p>
         ) : encounters.length === 0 ? (
-          <p className="muted">No encounters yet. Create one above to get started.</p>
+          <div className="encounter-empty">
+            <p className="muted">
+              No encounters yet. Create one above or import a saved account backup to get started.
+            </p>
+            <button
+              type="button"
+              className="ghost"
+              onClick={handleImportAccountClick}
+              disabled={isImportingAccount}
+            >
+              {isImportingAccount ? 'Importing…' : 'Import Account'}
+            </button>
+          </div>
         ) : (
           <ul className="encounter-list-items">
             {encounters.map((encounter) => (

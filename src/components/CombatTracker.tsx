@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CSSProperties } from 'react';
+import type { ChangeEvent, CSSProperties } from 'react';
 import clsx from 'clsx';
 import { useCombatTracker } from '../hooks/useCombatTracker';
 import InitiativeList from './InitiativeList';
@@ -11,7 +11,9 @@ import type { StatusEffectTemplate } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useEncounterContext } from '../context/EncounterContext';
 import EncounterManager from './EncounterManager';
+import { useCombatantLibrary } from '../context/CombatantLibraryContext';
 import { APP_VERSION } from '../version';
+import { exportAccountArchive, restoreAccountFromFile } from '../utils/accountBackup';
 
 type CarouselItemStyle = CSSProperties & {
   '--offset'?: number;
@@ -19,9 +21,10 @@ type CarouselItemStyle = CSSProperties & {
 };
 
 const CombatTracker = () => {
-  const { selectedEncounterId, selectedEncounter } = useEncounterContext();
+  const { selectedEncounterId, selectedEncounter, refreshEncounters, selectEncounter } = useEncounterContext();
   const { state, actions, presets, isLoading } = useCombatTracker(selectedEncounterId);
   const { user, handleSignOut } = useAuth();
+  const { refresh: refreshCombatantLibrary } = useCombatantLibrary();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAttackModalOpen, setIsAttackModalOpen] = useState(false);
   const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(!selectedEncounterId);
@@ -33,6 +36,9 @@ const CombatTracker = () => {
   const accountButtonRef = useRef<HTMLButtonElement | null>(null);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [isExportingAccount, setIsExportingAccount] = useState(false);
+  const [isImportingAccount, setIsImportingAccount] = useState(false);
+  const accountImportInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleAddStatus = (combatantId: string, template: StatusEffectTemplate, rounds: number | null, note?: string) => {
     actions.addStatus(combatantId, template, rounds, note);
@@ -192,6 +198,83 @@ const CombatTracker = () => {
     popup.focus();
   };
 
+  const handleExportAccount = async () => {
+    if (typeof window === 'undefined') return;
+    if (isExportingAccount) return;
+    setIsExportingAccount(true);
+    setIsAccountMenuOpen(false);
+    try {
+      const result = await exportAccountArchive();
+      const url = URL.createObjectURL(result.blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = result.fileName;
+      anchor.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      if (result.skippedEncounters.length > 0) {
+        window.alert(
+          `Export completed with warnings. Skipped ${result.skippedEncounters.length} encounter` +
+            `${result.skippedEncounters.length === 1 ? '' : 's'} during export.`
+        );
+      }
+    } catch (error) {
+      console.error('Failed to export account archive', error);
+      const message = error instanceof Error ? error.message : 'Unknown error occurred during export.';
+      window.alert('Could not export account: ' + message);
+    } finally {
+      setIsExportingAccount(false);
+    }
+  };
+
+  const handleImportAccountClick = () => {
+    if (isImportingAccount) return;
+    const input = accountImportInputRef.current;
+    if (!input) return;
+    input.value = '';
+    input.click();
+  };
+
+  const handleAccountImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) {
+      return;
+    }
+    if (typeof window === 'undefined') {
+      console.warn('Import is only available in the browser.');
+      return;
+    }
+    const confirmed = window.confirm(
+      'Importing a backup will replace your current combatant library and encounters. Continue?'
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setIsImportingAccount(true);
+    setIsAccountMenuOpen(false);
+    selectEncounter(null);
+    try {
+      const { summary, warnings } = await restoreAccountFromFile(file, {
+        refreshCombatantLibrary,
+        refreshEncounters,
+        selectEncounter
+      });
+
+      if (warnings.length > 0) {
+        window.alert(`${summary}\n\nWarnings:\n- ${warnings.join('\n- ')}`);
+      } else {
+        window.alert(summary);
+      }
+    } catch (error) {
+      console.error('Failed to import account archive', error);
+      const message = error instanceof Error ? error.message : 'Unknown error occurred during import.';
+      window.alert('Could not import account: ' + message);
+    } finally {
+      setIsImportingAccount(false);
+    }
+  };
+
 
   const rawAccountName = user?.email ?? 'Unknown User';
   const accountLabel = rawAccountName.includes('@') ? rawAccountName.split('@')[0] : rawAccountName;
@@ -248,8 +331,19 @@ const CombatTracker = () => {
                 disabled={!selectedEncounterId}
                 title="Account menu"
               >
-                <span aria-hidden="true">👤</span>
+                <span aria-hidden="true" className="account-trigger-icon">
+                  <span />
+                  <span />
+                  <span />
+                </span>
               </button>
+              <input
+                ref={accountImportInputRef}
+                type="file"
+                accept=".zip,application/zip,application/x-zip-compressed"
+                onChange={(event) => void handleAccountImportFile(event)}
+                style={{ display: 'none' }}
+              />
               {isAccountMenuOpen ? (
                 <div className="account-menu" role="menu" ref={accountMenuRef}>
                   <div className="account-menu-header" role="presentation">
@@ -260,6 +354,22 @@ const CombatTracker = () => {
                   </button>
                   <button type="button" onClick={openViewerWindow} role="menuitem" disabled={!selectedEncounterId}>
                     Open Player View
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleExportAccount()}
+                    role="menuitem"
+                    disabled={isExportingAccount || isImportingAccount}
+                  >
+                    {isExportingAccount ? 'Exporting…' : 'Export Account'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleImportAccountClick}
+                    role="menuitem"
+                    disabled={isImportingAccount || isExportingAccount}
+                  >
+                    {isImportingAccount ? 'Importing…' : 'Import Account'}
                   </button>
                   <button type="button" onClick={() => void handleSignOut()} role="menuitem">
                     Sign Out
