@@ -3,6 +3,8 @@ import { nanoid } from 'nanoid';
 import {
   Combatant,
   CombatantType,
+  CombatLogEntry,
+  CombatLogEventType,
   EncounterState,
   StatusEffectInstance,
   StatusEffectTemplate
@@ -40,6 +42,7 @@ type TrackerAction =
   | { type: 'rewind' }
   | { type: 'add-status'; payload: { id: string; status: StatusEffectInstance } }
   | { type: 'remove-status'; payload: { id: string; statusId: string } }
+  | { type: 'clear-log' }
   | { type: 'hydrate'; payload: EncounterState };
 
 type TrackerState = EncounterState;
@@ -51,6 +54,31 @@ interface TrackerBroadcastMessage {
 }
 
 const BROADCAST_CHANNEL_PREFIX = 'combat-tracker:encounter:';
+
+const MAX_LOG_ENTRIES = 250;
+
+const appendLog = (log: CombatLogEntry[], entry: CombatLogEntry | null): CombatLogEntry[] => {
+  if (!entry) return log;
+  const next = [...log, entry];
+  if (next.length <= MAX_LOG_ENTRIES) {
+    return next;
+  }
+  return next.slice(next.length - MAX_LOG_ENTRIES);
+};
+
+const createLogEntry = (
+  type: CombatLogEventType,
+  message: string,
+  round: number,
+  extras?: Partial<Pick<CombatLogEntry, 'combatantId' | 'amount'>>
+): CombatLogEntry => ({
+  id: nanoid(10),
+  type,
+  message,
+  round,
+  timestamp: new Date().toISOString(),
+  ...extras
+});
 
 const sortCombatants = (combatants: Combatant[]) =>
   [...combatants].sort((a, b) => {
@@ -83,17 +111,25 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
       }));
       const hydrated = {
         ...action.payload,
-        combatants: sortCombatants(sanitized)
+        combatants: sortCombatants(sanitized),
+        log: Array.isArray(action.payload.log) ? action.payload.log : []
       };
       return hydrated;
     }
     case 'add-combatant': {
       const combatants = sortCombatants([...state.combatants, action.payload]);
       const activeCombatantId = combatants.length === 1 ? combatants[0].id : state.activeCombatantId;
+      const entry = createLogEntry(
+        'combatant-add',
+        `${action.payload.name} joined the encounter.`,
+        state.round,
+        { combatantId: action.payload.id }
+      );
       return {
         ...state,
         combatants,
-        activeCombatantId
+        activeCombatantId,
+        log: appendLog(state.log, entry)
       };
     }
     case 'remove-combatant': {
@@ -102,13 +138,21 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
       if (activeCombatantId === action.payload.id) {
         activeCombatantId = combatants[0]?.id ?? null;
       }
+      const removed = state.combatants.find((combatant) => combatant.id === action.payload.id);
+      const entry = removed
+        ? createLogEntry('combatant-remove', `${removed.name} left the encounter.`, state.round, {
+            combatantId: removed.id
+          })
+        : null;
       return {
         ...state,
         combatants,
-        activeCombatantId
+        activeCombatantId,
+        log: appendLog(state.log, entry)
       };
     }
     case 'update-combatant': {
+      let logEntry: CombatLogEntry | null = null;
       const combatants = sortCombatants(
         state.combatants.map((combatant) =>
           combatant.id === action.payload.id
@@ -128,15 +172,91 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
             : combatant
         )
       );
+      const targetBefore = state.combatants.find((combatant) => combatant.id === action.payload.id);
+      const targetAfter = combatants.find((combatant) => combatant.id === action.payload.id);
+      if (targetBefore && targetAfter) {
+        const explicitHpChange = typeof action.payload.changes.hp?.current === 'number';
+        const maxWasUpdated = typeof action.payload.changes.hp?.max === 'number';
+        const hpChange =
+          explicitHpChange || maxWasUpdated
+            ? targetAfter.hp.current - targetBefore.hp.current
+            : 0;
+        if (hpChange > 0) {
+          logEntry = createLogEntry(
+            'heal',
+            `${targetAfter.name} regained ${hpChange} HP (${targetAfter.hp.current}/${targetAfter.hp.max}).`,
+            state.round,
+            {
+              combatantId: targetAfter.id,
+              amount: hpChange
+            }
+          );
+        } else if (hpChange < 0) {
+          const clampedToMax =
+            maxWasUpdated &&
+            !explicitHpChange &&
+            targetAfter.hp.current === targetAfter.hp.max &&
+            targetAfter.hp.max < targetBefore.hp.max;
+          if (clampedToMax) {
+            logEntry = createLogEntry(
+              'info',
+              `${targetAfter.name}'s HP capped at new maximum (${targetAfter.hp.max}).`,
+              state.round,
+              { combatantId: targetAfter.id }
+            );
+          } else {
+            logEntry = createLogEntry(
+              'damage',
+              `${targetAfter.name} took ${Math.abs(hpChange)} damage (${targetAfter.hp.current}/${targetAfter.hp.max}).`,
+              state.round,
+              {
+                combatantId: targetAfter.id,
+                amount: Math.abs(hpChange)
+              }
+            );
+          }
+        } else if (
+          action.payload.changes.initiative !== undefined ||
+          action.payload.changes.ac !== undefined ||
+          action.payload.changes.note !== undefined ||
+          action.payload.changes.icon !== undefined ||
+          action.payload.changes.name !== undefined ||
+          maxWasUpdated
+        ) {
+          logEntry = createLogEntry('info', `${targetAfter.name}'s details were updated.`, state.round, {
+            combatantId: targetAfter.id
+          });
+        }
+      }
       return {
         ...state,
-        combatants
+        combatants,
+        log: appendLog(state.log, logEntry)
       };
     }
     case 'apply-delta': {
+      let logEntry: CombatLogEntry | null = null;
       const combatants = state.combatants.map((combatant) => {
         if (combatant.id !== action.payload.id) return combatant;
         const next = Math.max(0, Math.min(combatant.hp.max, combatant.hp.current - action.payload.delta));
+        const amountChanged = Math.abs(next - combatant.hp.current);
+        if (amountChanged > 0) {
+          if (action.payload.delta > 0) {
+            logEntry = createLogEntry(
+              'damage',
+              `${combatant.name} took ${amountChanged} damage (${next}/${combatant.hp.max}).`,
+              state.round,
+              { combatantId: combatant.id, amount: amountChanged }
+            );
+          } else {
+            logEntry = createLogEntry(
+              'heal',
+              `${combatant.name} regained ${amountChanged} HP (${next}/${combatant.hp.max}).`,
+              state.round,
+              { combatantId: combatant.id, amount: amountChanged }
+            );
+          }
+        }
         return {
           ...combatant,
           hp: {
@@ -147,7 +267,8 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
       });
       return {
         ...state,
-        combatants
+        combatants,
+        log: appendLog(state.log, logEntry)
       };
     }
     case 'set-active':
@@ -162,11 +283,22 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
       const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % sorted.length;
       const wrapped = currentIndex !== -1 && nextIndex === 0;
       const combatants = wrapped ? decrementStatusDurations(sorted) : sorted;
+      const nextRound = wrapped ? state.round + 1 : state.round;
+      const nextCombatant = combatants[nextIndex];
+      const entry = nextCombatant
+        ? createLogEntry(
+            'turn',
+            `Turn advanced to ${nextCombatant.name}${wrapped ? ` — Round ${nextRound}` : ''}.`,
+            nextRound,
+            { combatantId: nextCombatant.id }
+          )
+        : null;
       return {
         combatants,
         activeCombatantId: combatants[nextIndex]?.id ?? null,
-        round: wrapped ? state.round + 1 : state.round,
-        startedAt: state.startedAt ?? new Date().toISOString()
+        round: nextRound,
+        startedAt: state.startedAt ?? new Date().toISOString(),
+        log: appendLog(state.log, entry)
       };
     }
     case 'rewind': {
@@ -175,14 +307,26 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
       const currentIndex = sorted.findIndex((combatant) => combatant.id === state.activeCombatantId);
       const nextIndex = currentIndex === -1 ? sorted.length - 1 : (currentIndex - 1 + sorted.length) % sorted.length;
       const wrapped = currentIndex !== -1 && currentIndex === 0;
+      const nextRound = wrapped && state.round > 1 ? state.round - 1 : state.round;
+      const nextCombatant = sorted[nextIndex];
+      const entry = nextCombatant
+        ? createLogEntry(
+            'turn',
+            `Rewound turn to ${nextCombatant.name}${wrapped ? ` — Round ${nextRound}` : ''}.`,
+            nextRound,
+            { combatantId: nextCombatant.id }
+          )
+        : null;
       return {
         ...state,
         combatants: sorted,
         activeCombatantId: sorted[nextIndex]?.id ?? null,
-        round: wrapped && state.round > 1 ? state.round - 1 : state.round
+        round: nextRound,
+        log: appendLog(state.log, entry)
       };
     }
     case 'add-status': {
+      const owner = state.combatants.find((combatant) => combatant.id === action.payload.id);
       const combatants = state.combatants.map((combatant) =>
         combatant.id === action.payload.id
           ? {
@@ -191,12 +335,25 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
             }
           : combatant
       );
+      const entry = owner
+        ? createLogEntry(
+            'status-add',
+            `${owner.name} gained ${action.payload.status.icon} ${action.payload.status.label}${
+              action.payload.status.remainingRounds !== null ? ` (${action.payload.status.remainingRounds} rounds)` : ''
+            }.`,
+            state.round,
+            { combatantId: owner.id }
+          )
+        : null;
       return {
         ...state,
-        combatants
+        combatants,
+        log: appendLog(state.log, entry)
       };
     }
     case 'remove-status': {
+      const owner = state.combatants.find((combatant) => combatant.id === action.payload.id);
+      const removedStatus = owner?.statuses.find((status) => status.instanceId === action.payload.statusId);
       const combatants = state.combatants.map((combatant) =>
         combatant.id === action.payload.id
           ? {
@@ -205,11 +362,29 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
             }
           : combatant
       );
+      const entry =
+        owner && removedStatus
+          ? createLogEntry(
+              'status-remove',
+              `${removedStatus.icon} ${removedStatus.label} was removed from ${owner.name}.`,
+              state.round,
+              { combatantId: owner.id }
+            )
+          : null;
       return {
         ...state,
-        combatants
+        combatants,
+        log: appendLog(state.log, entry)
       };
     }
+    case 'clear-log':
+      if (state.log.length === 0) {
+        return state;
+      }
+      return {
+        ...state,
+        log: []
+      };
     default:
       return state;
   }
@@ -220,7 +395,8 @@ const fallbackIcons = COMBATANT_ICON_LIBRARY.map((item) => item.icon);
 const defaultEncounter = (): EncounterState => ({
   combatants: [],
   activeCombatantId: null,
-  round: 1
+  round: 1,
+  log: []
 });
 
 export const useCombatTracker = (encounterId: string | null) => {
@@ -411,6 +587,10 @@ export const useCombatTracker = (encounterId: string | null) => {
     dispatch({ type: 'hydrate', payload: encounter });
   }, []);
 
+  const clearLog = useCallback(() => {
+    dispatch({ type: 'clear-log' });
+  }, []);
+
   const derived = useMemo(() => {
     const combatants = sortCombatants(state.combatants);
     const activeIndex = combatants.findIndex((combatant) => combatant.id === state.activeCombatantId);
@@ -442,7 +622,8 @@ export const useCombatTracker = (encounterId: string | null) => {
       addStatus,
       removeStatus,
       resetEncounter,
-      hydrate
+      hydrate,
+      clearLog
     },
     presets,
     isLoading: isHydrating

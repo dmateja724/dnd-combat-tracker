@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import CombatTracker from './components/CombatTracker';
 import CombatantViewer from './components/CombatantViewer';
+import CombatLogViewer from './components/CombatLogViewer';
 import SignInPage from './pages/SignIn';
 import SignUpPage from './pages/SignUp';
 import { useAuth } from './context/AuthContext';
@@ -68,6 +69,14 @@ const App = () => {
         element={
           <RequireAuth>
             <CombatantViewer />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/log"
+        element={
+          <RequireAuth>
+            <CombatLogViewer />
           </RequireAuth>
         }
       />

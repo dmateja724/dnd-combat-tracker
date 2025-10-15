@@ -59,9 +59,30 @@ export interface CombatantLibraryExport {
   templates: CombatantTemplateInput[];
 }
 
+export type CombatLogEventType =
+  | 'info'
+  | 'damage'
+  | 'heal'
+  | 'turn'
+  | 'status-add'
+  | 'status-remove'
+  | 'combatant-add'
+  | 'combatant-remove';
+
+export interface CombatLogEntry {
+  id: string;
+  type: CombatLogEventType;
+  message: string;
+  timestamp: string;
+  round: number;
+  combatantId?: string;
+  amount?: number;
+}
+
 export interface EncounterState {
   combatants: Combatant[];
   activeCombatantId: string | null;
   round: number;
   startedAt?: string;
+  log: CombatLogEntry[];
 }

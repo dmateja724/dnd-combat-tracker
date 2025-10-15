@@ -25,6 +25,10 @@ const CombatTracker = () => {
   const initiativeScrollRef = useRef<HTMLDivElement | null>(null);
   const initiativeRefs = useRef(new Map<string, HTMLLIElement>());
   const viewerWindowRef = useRef<Window | null>(null);
+  const logWindowRef = useRef<Window | null>(null);
+  const accountButtonRef = useRef<HTMLButtonElement | null>(null);
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
 
   const handleAddStatus = (combatantId: string, template: StatusEffectTemplate, rounds: number | null, note?: string) => {
     actions.addStatus(combatantId, template, rounds, note);
@@ -62,6 +66,43 @@ const CombatTracker = () => {
       if (popup && !popup.closed) {
         popup.close();
       }
+      const logPopup = logWindowRef.current;
+      if (logPopup && !logPopup.closed) {
+        logPopup.close();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAccountMenuOpen) {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsAccountMenuOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isAccountMenuOpen]);
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      const menu = accountMenuRef.current;
+      const button = accountButtonRef.current;
+      if (!menu || !button) return;
+      if (menu.contains(target) || button.contains(target)) {
+        return;
+      }
+      setIsAccountMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
     };
   }, []);
 
@@ -77,6 +118,7 @@ const CombatTracker = () => {
 
   const openViewerWindow = () => {
     if (typeof window === 'undefined') return;
+    setIsAccountMenuOpen(false);
 
     const existing = viewerWindowRef.current;
     if (existing && existing.closed) {
@@ -110,6 +152,42 @@ const CombatTracker = () => {
     popup.focus();
   };
 
+  const openLogWindow = () => {
+    if (typeof window === 'undefined') return;
+    setIsAccountMenuOpen(false);
+
+    const existing = logWindowRef.current;
+    if (existing && existing.closed) {
+      logWindowRef.current = null;
+    } else if (existing && !existing.closed) {
+      existing.focus();
+      return;
+    }
+
+    const screenWidth = window.screen?.availWidth ?? window.innerWidth;
+    const screenHeight = window.screen?.availHeight ?? window.innerHeight;
+    const width = Math.min(460, screenWidth);
+    const height = Math.min(720, screenHeight);
+    const left = window.screenX + Math.max(0, window.outerWidth - width - 20);
+    const top = window.screenY + 40;
+    const features = [
+      'popup=yes',
+      'resizable=yes',
+      'scrollbars=yes',
+      `width=${Math.round(width)}`,
+      `height=${Math.round(height)}`,
+      `left=${Math.round(left)}`,
+      `top=${Math.round(top)}`
+    ].join(',');
+    const popup = window.open('/log', 'combat-log-viewer', features);
+    if (!popup) {
+      window.alert('Allow pop-ups to open the combat log view.');
+      return;
+    }
+    logWindowRef.current = popup;
+    popup.focus();
+  };
+
 
   const activeIndex = state.activeCombatantId
     ? state.combatants.findIndex((combatant) => combatant.id === state.activeCombatantId)
@@ -139,33 +217,45 @@ const CombatTracker = () => {
             <span className="label">Round</span>
             <span className="value">{state.round}</span>
           </div>
-          <div className="session-info">
-            <span className="session-label">Encounter</span>
-            <span className="session-value">{selectedEncounter?.name ?? 'Untitled Encounter'}</span>
-            <button type="button" className="ghost" onClick={() => setIsSelectionModalOpen(true)}>
-              Switch
-            </button>
-          </div>
-          <div className="session-info">
-            <span className="session-label">Signed in as</span>
-            <span className="session-value">{user?.email}</span>
-            <button type="button" className="ghost" onClick={() => void handleSignOut()}>
-              Sign Out
-            </button>
-          </div>
-          <div className="session-info session-info--viewer">
-            <span className="session-label">Player View</span>
-            {!selectedEncounterId && (
-              <span className="session-value">Select an encounter</span>
-            )}
-            <button
-              type="button"
-              className="ghost"
-              onClick={openViewerWindow}
-              disabled={!selectedEncounterId}
-            >
-              Open Viewer
-            </button>
+          <div className="tracker-meta">
+            <div className="session-info">
+              <span className="session-label">Encounter</span>
+              <span className="session-value">{selectedEncounter?.name ?? 'Untitled Encounter'}</span>
+              <button type="button" className="ghost" onClick={() => setIsSelectionModalOpen(true)}>
+                Switch
+              </button>
+            </div>
+            <div className="account-menu-wrapper">
+              <button
+                type="button"
+                className="account-trigger"
+                onClick={() => setIsAccountMenuOpen((value) => !value)}
+                aria-haspopup="true"
+                aria-expanded={isAccountMenuOpen}
+                aria-label="Account menu"
+                ref={accountButtonRef}
+                disabled={!selectedEncounterId}
+                title="Account menu"
+              >
+                <span aria-hidden="true">👤</span>
+              </button>
+              {isAccountMenuOpen ? (
+                <div className="account-menu" role="menu" ref={accountMenuRef}>
+                  <div className="account-menu-header" role="presentation">
+                    <span className="account-name">{user?.email ?? 'Unknown User'}</span>
+                  </div>
+                  <button type="button" onClick={openLogWindow} role="menuitem">
+                    Open Combat Log
+                  </button>
+                  <button type="button" onClick={openViewerWindow} role="menuitem" disabled={!selectedEncounterId}>
+                    Open Player View
+                  </button>
+                  <button type="button" onClick={() => void handleSignOut()} role="menuitem">
+                    Sign Out
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
         <div className="dice-tray" aria-live="polite">

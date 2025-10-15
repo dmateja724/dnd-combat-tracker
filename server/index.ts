@@ -206,7 +206,7 @@ const updateTemplateStmt = db.prepare(
 
 const deleteTemplateStmt = db.prepare('DELETE FROM combatant_templates WHERE id = ? AND user_id = ?');
 
-const defaultEncounterState = JSON.stringify({ combatants: [], activeCombatantId: null, round: 1 });
+const defaultEncounterState = JSON.stringify({ combatants: [], activeCombatantId: null, round: 1, log: [] });
 
 const createSessionToken = (userId: string) =>
   jwt.sign({ sub: userId }, TOKEN_SECRET, {
