@@ -3,7 +3,9 @@ services:
     build:
       context: .
       target: frontend
-    image: dnd-combat-tracker-frontend
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
+    image: dnd-combat-tracker-frontend:${APP_VERSION:-dev}
     container_name: dnd-combat-tracker-frontend
     restart: unless-stopped
     depends_on:
@@ -22,7 +24,9 @@ services:
     build:
       context: .
       target: api
-    image: dnd-combat-tracker-api
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
+    image: dnd-combat-tracker-api:${APP_VERSION:-dev}
     container_name: dnd-combat-tracker-api
     restart: unless-stopped
     environment:

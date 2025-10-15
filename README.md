@@ -97,6 +97,13 @@ Create a production build of the client and serve it locally:
 
 `npm run build` runs TypeScript checks and `vite build`. `npm run preview` serves the static client; run `npm run server` in another terminal so API requests continue to work.
 
+## Versioning & Deployment
+
+- Bump the version with `npm version <patch|minor|major>` (or a specific semver); the version in `package.json` drives the entire build.
+- Inspect the current version at any time with `npm run version:print`.
+- `npm run deploy` now reads the package version, builds the Docker images with `APP_VERSION`/`VITE_APP_VERSION` set, and tags the images as `:<version>`.
+- The compiled frontend exposes the active version as a `<meta name="app-version">` tag and surfaces it in the account menu for quick verification after a deploy.
+
 ## Docker
 
 A multi-stage `Dockerfile` is included with two targets:

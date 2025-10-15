@@ -513,13 +513,13 @@ button {
 }
 
 .session-info {
-  align-items: flex-start;
+  align-items: center;
   display: flex;
   flex-direction: column;
   gap: 6px;
   font-size: 14px;
   color: var(--text-secondary);
-  text-align: left;
+  text-align: center;
 }
 
 .account-menu-wrapper {
@@ -598,6 +598,16 @@ button {
 .account-menu button:hover,
 .account-menu button:focus-visible {
   background: rgba(255, 255, 255, 0.08);
+}
+
+.account-version {
+  margin: 6px 12px 4px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
 }
 
 .session-label {
