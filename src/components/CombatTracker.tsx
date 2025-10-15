@@ -5,6 +5,7 @@ import { useCombatTracker } from '../hooks/useCombatTracker';
 import InitiativeList from './InitiativeList';
 import CombatantCard from './CombatantCard';
 import AddCombatantForm from './forms/AddCombatantForm';
+import AttackActionForm from './forms/AttackActionForm';
 import Modal from './Modal';
 import type { StatusEffectTemplate } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -22,6 +23,7 @@ const CombatTracker = () => {
   const { state, actions, presets, isLoading } = useCombatTracker(selectedEncounterId);
   const { user, handleSignOut } = useAuth();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isAttackModalOpen, setIsAttackModalOpen] = useState(false);
   const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(!selectedEncounterId);
   const [lastRoll, setLastRoll] = useState<{ die: number; result: number } | null>(null);
   const initiativeScrollRef = useRef<HTMLDivElement | null>(null);
@@ -325,6 +327,14 @@ const CombatTracker = () => {
             <button type="button" onClick={actions.rewindTurn} className="ghost">
               ⏮ Prev
             </button>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => setIsAttackModalOpen(true)}
+              disabled={state.combatants.length < 2}
+            >
+              ⚔️ Attack
+            </button>
             <button type="button" onClick={actions.advanceTurn} className="primary">
               Next ⏭
             </button>
@@ -380,6 +390,21 @@ const CombatTracker = () => {
           )}
         </section>
       </div>
+      <Modal
+        isOpen={isAttackModalOpen}
+        onClose={() => setIsAttackModalOpen(false)}
+        ariaLabel="Resolve attack form"
+      >
+        <AttackActionForm
+          combatants={state.combatants}
+          defaultAttackerId={state.activeCombatantId}
+          onSubmit={(payload) => {
+            actions.recordAttack(payload);
+            setIsAttackModalOpen(false);
+          }}
+          onCancel={() => setIsAttackModalOpen(false)}
+        />
+      </Modal>
       <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} ariaLabel="Add combatant form">
         <AddCombatantForm
           onCreate={(payload, options) => {

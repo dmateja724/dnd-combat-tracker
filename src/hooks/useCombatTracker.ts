@@ -32,11 +32,19 @@ export interface UpdateCombatantInput {
   note?: string;
 }
 
+export interface AttackActionInput {
+  attackerId: string;
+  targetId: string;
+  amount: number;
+  damageType: string;
+}
+
 type TrackerAction =
   | { type: 'add-combatant'; payload: Combatant }
   | { type: 'remove-combatant'; payload: { id: string } }
   | { type: 'update-combatant'; payload: { id: string; changes: UpdateCombatantInput } }
   | { type: 'apply-delta'; payload: { id: string; delta: number } }
+  | { type: 'attack'; payload: AttackActionInput }
   | { type: 'set-active'; payload: { id: string | null } }
   | { type: 'advance' }
   | { type: 'rewind' }
@@ -265,6 +273,49 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
           }
         };
       });
+      return {
+        ...state,
+        combatants,
+        log: appendLog(state.log, logEntry)
+      };
+    }
+    case 'attack': {
+      const attacker = state.combatants.find((combatant) => combatant.id === action.payload.attackerId);
+      const target = state.combatants.find((combatant) => combatant.id === action.payload.targetId);
+      if (!target) {
+        return state;
+      }
+      const sanitizedAmount = Number.isFinite(action.payload.amount) ? Math.max(0, Math.round(action.payload.amount)) : 0;
+      const appliedDamage = Math.min(target.hp.current, sanitizedAmount);
+      const nextHp = target.hp.current - appliedDamage;
+      const combatants =
+        appliedDamage > 0
+          ? state.combatants.map((combatant) =>
+              combatant.id === target.id
+                ? {
+                    ...combatant,
+                    hp: {
+                      ...combatant.hp,
+                      current: nextHp
+                    }
+                  }
+                : combatant
+            )
+          : state.combatants;
+      const attackerName = attacker ? attacker.name : 'Unknown attacker';
+      const targetName = target.name;
+      const damageType = action.payload.damageType.trim();
+      const damageLabel =
+        damageType && damageType.toLowerCase().endsWith('damage') ? damageType : damageType ? `${damageType} damage` : 'damage';
+      const logEntry = createLogEntry(
+        'attack',
+        `${attackerName} dealt ${appliedDamage} ${damageLabel} to ${targetName} (${nextHp}/${target.hp.max}).`,
+        state.round,
+        {
+          combatantId: target.id,
+          amount: appliedDamage
+        }
+      );
       return {
         ...state,
         combatants,
@@ -549,6 +600,10 @@ export const useCombatTracker = (encounterId: string | null) => {
     dispatch({ type: 'apply-delta', payload: { id, delta } });
   }, []);
 
+  const recordAttack = useCallback((input: AttackActionInput) => {
+    dispatch({ type: 'attack', payload: input });
+  }, []);
+
   const setActiveCombatant = useCallback((id: string) => {
     dispatch({ type: 'set-active', payload: { id } });
   }, []);
@@ -616,6 +671,7 @@ export const useCombatTracker = (encounterId: string | null) => {
       removeCombatant,
       updateCombatant,
       applyDelta,
+      recordAttack,
       setActiveCombatant,
       advanceTurn,
       rewindTurn,

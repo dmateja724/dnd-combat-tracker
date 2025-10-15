@@ -61,6 +61,7 @@ export interface CombatantLibraryExport {
 
 export type CombatLogEventType =
   | 'info'
+  | 'attack'
   | 'damage'
   | 'heal'
   | 'turn'
