@@ -1276,8 +1276,26 @@ button {
 .saved-combatant-head {
   align-items: center;
   display: flex;
-  gap: 12px;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+  text-align: center;
+}
+
+.saved-combatant-tools {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  order: 1;
+}
+
+.saved-combatant-tools button {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .saved-combatant-head h4 {
@@ -1285,6 +1303,8 @@ button {
   letter-spacing: 0.08em;
   margin: 0;
   text-transform: uppercase;
+  width: 100%;
+  order: 2;
 }
 
 .saved-combatant-scroll {
