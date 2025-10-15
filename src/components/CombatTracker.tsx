@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import clsx from 'clsx';
 import { useCombatTracker } from '../hooks/useCombatTracker';
 import InitiativeList from './InitiativeList';
 import CombatantCard from './CombatantCard';
@@ -9,6 +10,7 @@ import type { StatusEffectTemplate } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useEncounterContext } from '../context/EncounterContext';
 import EncounterManager from './EncounterManager';
+import { APP_VERSION } from '../version';
 
 type CarouselItemStyle = CSSProperties & {
   '--offset'?: number;
@@ -189,6 +191,13 @@ const CombatTracker = () => {
   };
 
 
+  const rawAccountName = user?.email ?? 'Unknown User';
+  const accountLabel = rawAccountName.includes('@') ? rawAccountName.split('@')[0] : rawAccountName;
+  const accountNameClass = clsx('account-name', {
+    'account-name--small': accountLabel.length > 18,
+    'account-name--xsmall': accountLabel.length > 26
+  });
+
   const activeIndex = state.activeCombatantId
     ? state.combatants.findIndex((combatant) => combatant.id === state.activeCombatantId)
     : 0;
@@ -242,7 +251,7 @@ const CombatTracker = () => {
               {isAccountMenuOpen ? (
                 <div className="account-menu" role="menu" ref={accountMenuRef}>
                   <div className="account-menu-header" role="presentation">
-                    <span className="account-name">{user?.email ?? 'Unknown User'}</span>
+                    <span className={accountNameClass}>{accountLabel}</span>
                   </div>
                   <button type="button" onClick={openLogWindow} role="menuitem">
                     Open Combat Log
@@ -253,6 +262,9 @@ const CombatTracker = () => {
                   <button type="button" onClick={() => void handleSignOut()} role="menuitem">
                     Sign Out
                   </button>
+                  <div className="account-version" role="presentation">
+                    Version {APP_VERSION}
+                  </div>
                 </div>
               ) : null}
             </div>
