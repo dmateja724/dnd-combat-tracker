@@ -7,9 +7,11 @@ A modern React + Vite encounter manager for tabletop combat. Sign in, build enco
 - Turn timeline with auto-sorted initiative, active combatant highlighting, and a running round counter.
 - Combatant cards with quick damage/heal controls, health bars, AC badges, notes, and status summaries.
 - Status effect panel with preset conditions, fully custom effects, optional round timers, and automatic decrement when rounds advance.
+- Dedicated attack resolution modal to pick an attacker and target, choose damage type, apply damage, and log the outcome automatically.
 - Saved combatant library you can create, edit, reuse, export to JSON, and restore via import.
 - Encounter library per account with modal-driven create/rename/delete flows, instant switching, and automatic persistence.
 - Dice tray for common polyhedral rolls plus rewind/advance turn controls, backed by secure email/password auth with HTTP-only cookies.
+- Pop-out combat log viewer that mirrors every action (attacks, damage, healing, statuses, turns) with persistent history per encounter.
 - Pop-out player viewer window that mirrors the active encounter so players can track turns without touching the GM screen.
 
 ## Tech Stack
@@ -58,7 +60,7 @@ PORT=4100 JWT_SECRET=supersecret npm run server
 
         npm run dev:all
 
-5. Sign up or sign in inside the app, create an encounter, and start adding combatants.
+5. Sign up or sign in inside the app, create an encounter, add combatants, then use the **Attack** action or quick damage buttons to drive the turn-by-turn flow while the combat log records every event.
 
 ## Combatant Library Export & Import
 

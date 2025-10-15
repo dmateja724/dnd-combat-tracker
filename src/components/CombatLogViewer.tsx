@@ -4,6 +4,7 @@ import { useEncounterContext } from '../context/EncounterContext';
 import type { CombatLogEntry, CombatLogEventType } from '../types';
 
 const typeIcons: Record<CombatLogEventType, string> = {
+  attack: '⚔️',
   damage: '🗡️',
   heal: '✨',
   turn: '⏱️',
@@ -15,6 +16,7 @@ const typeIcons: Record<CombatLogEventType, string> = {
 };
 
 const typeLabels: Record<CombatLogEventType, string> = {
+  attack: 'Attack',
   damage: 'Damage',
   heal: 'Heal',
   turn: 'Turn',

@@ -200,11 +200,11 @@ button {
 }
 
 .log-viewer-header {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 18px;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 220px;
 }
 
 .log-viewer-title {
@@ -226,9 +226,12 @@ button {
 }
 
 .log-viewer-meta {
+  position: absolute;
+  top: 0;
+  right: 0;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .log-viewer-count {
@@ -241,6 +244,18 @@ button {
   border: 1px solid var(--border-soft);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
+}
+
+@media (max-width: 420px) {
+  .log-viewer-header {
+    padding-right: 0;
+  }
+
+  .log-viewer-meta {
+    position: static;
+    margin-top: 8px;
+    justify-content: flex-start;
+  }
 }
 
 .log-meta-label {
@@ -261,6 +276,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -269,6 +285,8 @@ button {
   flex-direction: column;
   gap: 12px;
   padding-right: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
 }
@@ -1477,6 +1495,73 @@ button {
   margin: 0;
 }
 
+.attack-action-modal {
+  background: rgba(14, 12, 18, 0.85);
+  border: 1px solid var(--border-soft);
+  border-radius: 18px;
+  display: grid;
+  gap: 18px;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  padding: clamp(20px, 5vw, 28px);
+  width: min(420px, 100%);
+}
+
+.attack-action-head {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.attack-action-head h3 {
+  font-family: 'Unbounded', 'Inter', sans-serif;
+  font-size: 20px;
+  letter-spacing: 0.05em;
+  margin: 0 0 6px;
+}
+
+.attack-action-head p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.attack-action-form {
+  display: grid;
+  gap: 12px;
+}
+
+.attack-action-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.attack-summary {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  padding: 12px;
+}
+
+.attack-summary-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.attack-summary-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .notes-editor {
   display: grid;
   gap: 8px;
@@ -1745,7 +1830,8 @@ button {
 }
 
 .add-combatant label,
-.status-form label {
+.status-form label,
+.attack-action-form label {
   color: var(--text-secondary);
   font-size: 12px;
   letter-spacing: 0.06em;
@@ -1772,7 +1858,9 @@ button {
 .add-combatant textarea,
 .status-form input,
 .status-form select,
-.status-form textarea {
+.status-form textarea,
+.attack-action-form input,
+.attack-action-form select {
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid var(--border-soft);
   border-radius: 12px;

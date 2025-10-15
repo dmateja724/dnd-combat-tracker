@@ -39,6 +39,7 @@ const coerceLogEntry = (value: unknown): CombatLogEntry | null => {
   if (typeof value.id !== 'string') return null;
   if (
     value.type !== 'info' &&
+    value.type !== 'attack' &&
     value.type !== 'damage' &&
     value.type !== 'heal' &&
     value.type !== 'turn' &&
