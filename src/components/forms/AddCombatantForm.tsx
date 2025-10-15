@@ -1,7 +1,7 @@
-import { ChangeEvent, FormEvent, useMemo, useRef, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { AddCombatantInput } from '../../hooks/useCombatTracker';
 import { useCombatantLibrary } from '../../context/CombatantLibraryContext';
-import type { CombatantLibraryExport, CombatantTemplate, CombatantTemplateInput } from '../../types';
+import type { CombatantTemplate, CombatantTemplateInput } from '../../types';
 
 interface AddCombatantFormProps {
   onCreate: (payload: AddCombatantInput, options?: { stayOpen?: boolean }) => void;
@@ -59,9 +59,6 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
   const [feedback, setFeedback] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
-  const [libraryMessage, setLibraryMessage] = useState<string | null>(null);
-  const [libraryError, setLibraryError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const {
     templates,
@@ -71,8 +68,7 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
     refresh,
     saveTemplate,
     updateTemplate,
-    removeTemplate,
-    importTemplates
+    removeTemplate
   } =
     useCombatantLibrary();
 
@@ -158,163 +154,6 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
     }
   };
 
-  const handleExportLibrary = () => {
-    setLibraryError(null);
-    const payload: CombatantLibraryExport = {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      templates: templates.map((template) => ({
-        name: template.name,
-        type: template.type,
-        defaultInitiative: template.defaultInitiative,
-        maxHp: template.maxHp,
-        ac: template.ac ?? null,
-        icon: template.icon,
-        note: template.note ?? undefined
-      }))
-    };
-
-    if (typeof window === 'undefined') {
-      setLibraryError('Export is only available in the browser.');
-      setLibraryMessage(null);
-      return;
-    }
-
-    try {
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const downloadName = `combatant-library-${payload.exportedAt.slice(0, 10)}.json`;
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = downloadName;
-      anchor.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      const count = templates.length;
-      setLibraryMessage(
-        `Exported ${count} combatant${count === 1 ? '' : 's'} to ${downloadName}.`
-      );
-    } catch (err) {
-      console.error('Failed to export combatant library', err);
-      setLibraryError('Could not generate the export file.');
-      setLibraryMessage(null);
-    }
-  };
-
-  const handleImportClick = () => {
-    setLibraryError(null);
-    setLibraryMessage(null);
-    if (templates.length > 0) {
-      setLibraryError('Import is only available when your library is empty.');
-      return;
-    }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) {
-      return;
-    }
-
-    setLibraryError(null);
-    setLibraryMessage(null);
-
-    if (templates.length > 0) {
-      setLibraryError('Import is only available when your library is empty.');
-      return;
-    }
-
-    try {
-      const text = await file.text();
-      const parsed = JSON.parse(text) as unknown;
-      if (!parsed || typeof parsed !== 'object') {
-        setLibraryError('Uploaded file was not a valid combatant library export.');
-        return;
-      }
-
-      const candidate = parsed as Partial<CombatantLibraryExport>;
-      if (candidate.version !== 1 || !Array.isArray(candidate.templates)) {
-        setLibraryError('Unsupported library file format.');
-        return;
-      }
-
-      const parseCandidate = (value: unknown): CombatantTemplateInput | null => {
-        if (!value || typeof value !== 'object') return null;
-        const record = value as Record<string, unknown>;
-        const name = typeof record.name === 'string' ? record.name.trim() : '';
-        const type = record.type;
-        if (!name || typeof type !== 'string' || (type !== 'player' && type !== 'ally' && type !== 'enemy')) {
-          return null;
-        }
-
-        const initiativeValue = Number(record.defaultInitiative);
-        const maxHpValue = Number(record.maxHp);
-        if (!Number.isFinite(initiativeValue) || !Number.isFinite(maxHpValue) || maxHpValue <= 0) {
-          return null;
-        }
-
-        const acValue = record.ac;
-        let normalizedAc: number | null;
-        if (acValue === null || acValue === undefined || acValue === '') {
-          normalizedAc = null;
-        } else {
-          const numericAc = Number(acValue);
-          if (!Number.isFinite(numericAc) || numericAc < 0) {
-            return null;
-          }
-          normalizedAc = Math.round(numericAc);
-        }
-
-        const iconValue = typeof record.icon === 'string' && record.icon.trim() ? record.icon : defaultIcon;
-        const noteValue = typeof record.note === 'string' ? record.note.trim() : '';
-
-        return {
-          name,
-          type: type as CombatantTemplateInput['type'],
-          defaultInitiative: Math.round(initiativeValue),
-          maxHp: Math.max(1, Math.round(maxHpValue)),
-          ac: normalizedAc,
-          icon: iconValue,
-          note: noteValue ? noteValue : undefined
-        };
-      };
-
-      const normalized = candidate.templates
-        .map((entry) => parseCandidate(entry))
-        .filter((entry): entry is CombatantTemplateInput => entry !== null);
-
-      const skipped = candidate.templates.length - normalized.length;
-      if (normalized.length === 0) {
-        setLibraryError('No valid combatants found in the uploaded file.');
-        return;
-      }
-
-      const result = await importTemplates(normalized);
-      const importedCount = result.imported;
-      const failedCount = skipped + result.failed;
-
-      if (importedCount > 0) {
-        setLibraryMessage(`Imported ${importedCount} combatant${importedCount === 1 ? '' : 's'} from file.`);
-        setFeedback(null);
-        setLocalError(null);
-      }
-
-      if (failedCount > 0) {
-        setLibraryError(`Skipped ${failedCount} invalid combatant${failedCount === 1 ? '' : 's'} during import.`);
-      } else {
-        setLibraryError(null);
-      }
-    } catch (err) {
-      console.error('Failed to import combatant library', err);
-      setLibraryError('Could not read the uploaded file.');
-      setLibraryMessage(null);
-    }
-  };
-
   return (
     <form className="add-combatant" onSubmit={handleSubmit}>
       <div className="add-combatant-head">
@@ -344,29 +183,9 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
               <button type="button" className="ghost" onClick={() => void refresh()} disabled={isLoading}>
                 {isLoading ? 'Refreshing…' : 'Refresh'}
               </button>
-              <button
-                type="button"
-                className="ghost"
-                onClick={handleExportLibrary}
-                disabled={isLoading || isMutating || templates.length === 0}
-              >
-                Export
-              </button>
-              <button type="button" className="ghost" onClick={handleImportClick} disabled={isMutating}>
-                Import
-              </button>
             </div>
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/json"
-            onChange={(event) => void handleImportFile(event)}
-            style={{ display: 'none' }}
-          />
           {error && <p className="form-warning">{error}</p>}
-          {libraryError && <p className="form-warning">{libraryError}</p>}
-          {libraryMessage && <p className="form-feedback">{libraryMessage}</p>}
           <div className="saved-combatant-scroll">
             {isLoading ? (
               <p className="empty-state-text">Loading saved combatants…</p>

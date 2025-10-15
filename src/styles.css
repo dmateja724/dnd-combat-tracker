@@ -238,7 +238,7 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   min-width: 96px;
   padding: 10px 14px;
   border: 1px solid var(--border-soft);
@@ -560,6 +560,23 @@ button {
   transition: border-color 150ms ease, transform 150ms ease, background 150ms ease;
 }
 
+.account-trigger-icon {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  width: 18px;
+  height: 18px;
+}
+
+.account-trigger-icon > span {
+  width: 100%;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
 .account-trigger:hover:not(:disabled),
 .account-trigger:focus-visible {
   border-color: rgba(255, 255, 255, 0.24);
@@ -738,6 +755,23 @@ button {
   gap: 16px;
   padding-top: 24px;
   width: 100%;
+}
+
+.encounter-empty {
+  align-items: center;
+  background: rgba(12, 11, 18, 0.6);
+  border: 1px dashed var(--border-soft);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 20px;
+  text-align: center;
+}
+
+.encounter-empty button {
+  align-self: center;
+  min-width: 180px;
 }
 
 .encounter-list-header {
@@ -1829,6 +1863,7 @@ button {
   box-sizing: border-box;
 }
 
+
 .add-combatant label,
 .status-form label,
 .attack-action-form label {
@@ -1836,21 +1871,15 @@ button {
   font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .inline {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 12px;
-}
-
-.inline > label {
-  flex: 1 1 120px;
-}
-
-.inline input,
-.inline select {
-  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .add-combatant input,
