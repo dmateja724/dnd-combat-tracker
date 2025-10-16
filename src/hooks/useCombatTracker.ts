@@ -6,6 +6,7 @@ import {
   CombatLogEntry,
   CombatLogEventType,
   DeathSaveState,
+  DeathSaveStatus,
   EncounterState,
   StatusEffectInstance,
   StatusEffectTemplate
@@ -138,7 +139,12 @@ const sanitizeDeathSaves = (value: DeathSaveState | null | undefined): DeathSave
   if (!value) {
     return null;
   }
-  const status = value.status === 'stable' || value.status === 'dead' ? value.status : 'pending';
+  let status: DeathSaveStatus;
+  if (value.status === 'stable' || value.status === 'dead') {
+    status = value.status;
+  } else {
+    status = 'pending';
+  }
   const successes = clamp(Math.round(value.successes ?? 0), 0, 3);
   const failures = clamp(Math.round(value.failures ?? 0), 0, 3);
   const startedAtRound = clamp(Math.round(value.startedAtRound ?? 1), 1, Number.MAX_SAFE_INTEGER);
@@ -146,7 +152,7 @@ const sanitizeDeathSaves = (value: DeathSaveState | null | undefined): DeathSave
     typeof value.lastRollRound === 'number' && Number.isFinite(value.lastRollRound)
       ? clamp(Math.round(value.lastRollRound), 1, Number.MAX_SAFE_INTEGER)
       : null;
-  let normalizedStatus = status;
+  let normalizedStatus: DeathSaveStatus = status;
   if (normalizedStatus === 'pending') {
     if (successes >= 3) {
       normalizedStatus = 'stable';
@@ -659,7 +665,7 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
         } else {
           failures = clamp(failures + 1, 0, 3);
         }
-        let status = current.status;
+        let status: DeathSaveStatus;
         if (failures >= 3) {
           status = 'dead';
         } else if (successes >= 3) {
@@ -713,13 +719,11 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
         }
         const successes = clamp(Math.round(action.payload.successes), 0, 3);
         const failures = clamp(Math.round(action.payload.failures), 0, 3);
-        let status: DeathSaveState['status'] = combatant.deathSaves?.status ?? 'pending';
+        let status: DeathSaveStatus;
         if (failures >= 3) {
           status = 'dead';
         } else if (successes >= 3) {
           status = 'stable';
-        } else if (status === 'dead') {
-          status = 'pending';
         } else {
           status = 'pending';
         }
