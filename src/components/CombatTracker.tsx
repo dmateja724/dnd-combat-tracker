@@ -546,27 +546,29 @@ const CombatTracker = () => {
         ariaLabel="Death state prompt"
       >
         {activeDeathDecisionCombatant ? (
-          <div className="death-prompt">
-            <h3>{activeDeathDecisionCombatant.name} is at 0 HP</h3>
-            <p>
-              Choose <strong>Unconscious</strong> to begin tracking death saves automatically, or
-              mark them as dead if there is no chance of recovery.
-            </p>
-            <div className="death-prompt-actions">
-              <button
-                type="button"
-                className="primary"
-                onClick={() => handleMarkUnconscious(activeDeathDecisionCombatant.id)}
-              >
-                Unconscious
-              </button>
-              <button
-                type="button"
-                className="ghost danger"
-                onClick={() => handleMarkDead(activeDeathDecisionCombatant.id)}
-              >
-                Dead
-              </button>
+          <div className="death-prompt-shell">
+            <div className="death-prompt">
+              <h3>{activeDeathDecisionCombatant.name} is at 0 HP</h3>
+              <p>
+                Choose <strong>Unconscious</strong> to begin tracking death saves automatically, or
+                mark them as dead if there is no chance of recovery.
+              </p>
+              <div className="death-prompt-actions">
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={() => handleMarkUnconscious(activeDeathDecisionCombatant.id)}
+                >
+                  Unconscious
+                </button>
+                <button
+                  type="button"
+                  className="ghost danger"
+                  onClick={() => handleMarkDead(activeDeathDecisionCombatant.id)}
+                >
+                  Dead
+                </button>
+              </div>
             </div>
           </div>
         ) : null}

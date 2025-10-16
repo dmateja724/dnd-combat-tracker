@@ -27,7 +27,8 @@ const quickHealValues = [1, 5, 10];
 const typeToLabel: Record<Combatant['type'], string> = {
   player: 'Adventurer',
   ally: 'Ally',
-  enemy: 'Enemy'
+  enemy: 'Enemy',
+  boss: 'Boss'
 };
 
 const CombatantCard = ({
@@ -104,6 +105,25 @@ const CombatantCard = ({
   const hasDeathSaves = deathSaves !== null;
   const deathSavesLocked = !deathSaves || deathSaves.status === 'dead';
   const canRecordRoll = deathSaveStatus === 'pending';
+  const isPlayerOrAlly = combatant.type === 'player' || combatant.type === 'ally';
+  const isEnemy = combatant.type === 'enemy';
+  const isBoss = combatant.type === 'boss';
+  const isVillain = isEnemy || isBoss;
+  const youDiedOverlayActive = isPlayerOrAlly && deathSaveStatus === 'dead';
+  const villainFelledOverlayActive = isVillain && isDefeated;
+  const overlayVariant = youDiedOverlayActive
+    ? 'you-died'
+    : villainFelledOverlayActive
+    ? isBoss
+      ? 'boss-felled'
+      : 'enemy-felled'
+    : null;
+  const overlayText =
+    overlayVariant === 'enemy-felled'
+      ? 'ENEMY FELLED'
+      : overlayVariant === 'boss-felled'
+      ? 'Great Enemy Felled'
+      : 'YOU DIED';
 
   const handleSuccessChipClick = (index: number) => {
     if (!deathSaves || deathSavesLocked) return;
@@ -208,6 +228,11 @@ const CombatantCard = ({
         defeated: isDefeated
       })}
     >
+      {overlayVariant ? (
+        <div className={clsx('death-overlay', overlayVariant)} aria-hidden="true">
+          <span className={clsx('death-overlay-text', overlayVariant)}>{overlayText}</span>
+        </div>
+      ) : null}
       <header className="card-head">
         <button className="avatar" onClick={onCenter} type="button">
           <span>{combatant.icon}</span>

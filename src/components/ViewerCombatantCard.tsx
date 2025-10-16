@@ -4,7 +4,8 @@ import { Combatant } from '../types';
 const typeToLabel: Record<Combatant['type'], string> = {
   player: 'Adventurer',
   ally: 'Ally',
-  enemy: 'Enemy'
+  enemy: 'Enemy',
+  boss: 'Boss'
 };
 
 interface ViewerCombatantCardProps {
@@ -13,12 +14,33 @@ interface ViewerCombatantCardProps {
 }
 
 const ViewerCombatantCard = ({ combatant, isActive }: ViewerCombatantCardProps) => {
-  const showHealth = combatant.type !== 'enemy';
+  const deathSaves = combatant.deathSaves ?? null;
+  const deathSaveStatus = deathSaves?.status ?? null;
+  const isDeathSavesActive = !!deathSaves;
+  const showHpSection = !isDeathSavesActive;
   const healthPercent = combatant.hp.max === 0 ? 0 : Math.round((combatant.hp.current / combatant.hp.max) * 100);
   const hpWidth = Math.max(0, Math.min(healthPercent, 100)) + '%';
   const isDefeated = combatant.hp.current <= 0;
-  const deathSaves = combatant.deathSaves ?? null;
-  const deathSaveStatus = deathSaves?.status ?? null;
+  const isPlayerOrAlly = combatant.type === 'player' || combatant.type === 'ally';
+  const isEnemy = combatant.type === 'enemy';
+  const isBoss = combatant.type === 'boss';
+  const isVillain = isEnemy || isBoss;
+  const showHealthValues = !isVillain;
+  const youDiedOverlayActive = isPlayerOrAlly && deathSaveStatus === 'dead';
+  const villainFelledOverlayActive = isVillain && isDefeated;
+  const overlayVariant = youDiedOverlayActive
+    ? 'you-died'
+    : villainFelledOverlayActive
+    ? isBoss
+      ? 'boss-felled'
+      : 'enemy-felled'
+    : null;
+  const overlayText =
+    overlayVariant === 'enemy-felled'
+      ? 'ENEMY FELLED'
+      : overlayVariant === 'boss-felled'
+      ? 'Great Enemy Felled'
+      : 'YOU DIED';
 
   return (
     <article
@@ -27,6 +49,11 @@ const ViewerCombatantCard = ({ combatant, isActive }: ViewerCombatantCardProps) 
         defeated: isDefeated
       })}
     >
+      {overlayVariant ? (
+        <div className={clsx('death-overlay', overlayVariant)} aria-hidden="true">
+          <span className={clsx('death-overlay-text', overlayVariant)}>{overlayText}</span>
+        </div>
+      ) : null}
       <header className="card-head viewer-card-head">
         <div className="avatar viewer-avatar" aria-hidden="true">
           <span>{combatant.icon}</span>
@@ -40,24 +67,26 @@ const ViewerCombatantCard = ({ combatant, isActive }: ViewerCombatantCardProps) 
         </div>
       </header>
 
-      <section className="hp-block viewer-hp-block">
-        {showHealth ? (
-          <>
-            <div className="hp-info">
-              <strong>{combatant.hp.current}</strong>
-              <span>/ {combatant.hp.max} HP</span>
+      {showHpSection ? (
+        <section className="hp-block viewer-hp-block">
+          {showHealthValues ? (
+            <>
+              <div className="hp-info">
+                <strong>{combatant.hp.current}</strong>
+                <span>/ {combatant.hp.max} HP</span>
+              </div>
+              <div className="hp-bar">
+                <div className="hp-progress" style={{ width: hpWidth }} />
+              </div>
+            </>
+          ) : (
+            <div className="hp-hidden">
+              <span className="hp-hidden-label">HP Hidden</span>
+              <span className="hp-hidden-value">???</span>
             </div>
-            <div className="hp-bar">
-              <div className="hp-progress" style={{ width: hpWidth }} />
-            </div>
-          </>
-        ) : (
-          <div className="hp-hidden">
-            <span className="hp-hidden-label">HP Hidden</span>
-            <span className="hp-hidden-value">???</span>
-          </div>
-        )}
-      </section>
+          )}
+        </section>
+      ) : null}
 
       {deathSaves ? (
         <section className="viewer-death-saves">

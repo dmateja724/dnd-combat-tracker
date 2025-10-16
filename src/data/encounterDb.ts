@@ -13,7 +13,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
 const isCombatantType = (value: unknown): value is Combatant['type'] =>
-  value === 'player' || value === 'ally' || value === 'enemy';
+  value === 'player' || value === 'ally' || value === 'enemy' || value === 'boss';
 
 const clampTo = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 

@@ -235,7 +235,7 @@ interface AuthenticatedRequest extends Request {
   userId: string;
 }
 
-const combatantTypes = new Set(['player', 'ally', 'enemy']);
+const combatantTypes = new Set(['player', 'ally', 'enemy', 'boss']);
 
 const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   const token = req.cookies?.[TOKEN_COOKIE];
