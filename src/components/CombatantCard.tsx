@@ -104,6 +104,8 @@ const CombatantCard = ({
   const hasDeathSaves = deathSaves !== null;
   const deathSavesLocked = !deathSaves || deathSaves.status === 'dead';
   const canRecordRoll = deathSaveStatus === 'pending';
+  const isPlayerOrAlly = combatant.type === 'player' || combatant.type === 'ally';
+  const showDeathOverlay = isPlayerOrAlly && deathSaveStatus === 'dead';
 
   const handleSuccessChipClick = (index: number) => {
     if (!deathSaves || deathSavesLocked) return;
@@ -208,6 +210,11 @@ const CombatantCard = ({
         defeated: isDefeated
       })}
     >
+      {showDeathOverlay ? (
+        <div className="death-overlay" aria-hidden="true">
+          <span className="death-overlay-text">YOU DIED</span>
+        </div>
+      ) : null}
       <header className="card-head">
         <button className="avatar" onClick={onCenter} type="button">
           <span>{combatant.icon}</span>

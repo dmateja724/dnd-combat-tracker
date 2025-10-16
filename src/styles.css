@@ -990,6 +990,67 @@ button {
   position: absolute;
   z-index: -1;
 }
+.combatant-card .death-overlay {
+  align-items: center;
+  animation: deathOverlayFade 1.6s ease forwards;
+  background: radial-gradient(circle at center, rgba(193, 18, 31, 0.12), rgba(7, 6, 8, 0.6) 75%);
+  border-radius: inherit;
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  opacity: 0;
+  padding: clamp(24px, 6vw, 40px);
+  pointer-events: none;
+  position: absolute;
+  z-index: 6;
+}
+.combatant-card .death-overlay::before {
+  background: linear-gradient(
+    to bottom,
+    rgba(10, 6, 8, 0) 0%,
+    rgba(7, 6, 8, 0.92) 48%,
+    rgba(7, 6, 8, 0) 100%
+  );
+  border-radius: clamp(12px, 4vw, 24px);
+  box-shadow: 0 0 46px rgba(193, 18, 31, 0.38);
+  content: '';
+  height: clamp(72px, 18vw, 140px);
+  inset: 0;
+  margin: auto;
+  max-width: 92%;
+  position: absolute;
+  transform: translateY(-6%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.death-overlay-text {
+  color: #b40c12;
+  font-family: 'Unbounded', 'Inter', sans-serif;
+  font-size: clamp(14px, 4.1vw, 30px);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  text-shadow: 0 0 18px rgba(0, 0, 0, 0.8), 0 0 12px rgba(180, 12, 18, 0.85);
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes deathOverlayFade {
+  0% {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+
+  40% {
+    opacity: 0.2;
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 
 .card-head {
   align-items: flex-start;
