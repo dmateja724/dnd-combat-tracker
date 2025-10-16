@@ -105,7 +105,11 @@ const CombatantCard = ({
   const deathSavesLocked = !deathSaves || deathSaves.status === 'dead';
   const canRecordRoll = deathSaveStatus === 'pending';
   const isPlayerOrAlly = combatant.type === 'player' || combatant.type === 'ally';
-  const showDeathOverlay = isPlayerOrAlly && deathSaveStatus === 'dead';
+  const isEnemy = combatant.type === 'enemy';
+  const youDiedOverlayActive = isPlayerOrAlly && deathSaveStatus === 'dead';
+  const enemyFelledOverlayActive = isEnemy && isDefeated;
+  const overlayVariant = youDiedOverlayActive ? 'you-died' : enemyFelledOverlayActive ? 'enemy-felled' : null;
+  const overlayText = overlayVariant === 'enemy-felled' ? 'ENEMY FELLED' : 'YOU DIED';
 
   const handleSuccessChipClick = (index: number) => {
     if (!deathSaves || deathSavesLocked) return;
@@ -210,9 +214,9 @@ const CombatantCard = ({
         defeated: isDefeated
       })}
     >
-      {showDeathOverlay ? (
-        <div className="death-overlay" aria-hidden="true">
-          <span className="death-overlay-text">YOU DIED</span>
+      {overlayVariant ? (
+        <div className={clsx('death-overlay', overlayVariant)} aria-hidden="true">
+          <span className={clsx('death-overlay-text', overlayVariant)}>{overlayText}</span>
         </div>
       ) : null}
       <header className="card-head">

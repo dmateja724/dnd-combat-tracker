@@ -35,7 +35,7 @@ body {
   color: var(--text-primary);
   display: flex;
   justify-content: center;
-  align-items: stretch;
+  align-items: center;
   padding: clamp(16px, 4vw, 40px);
 }
 
@@ -211,14 +211,15 @@ button {
 .log-viewer-title {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  flex: 1 1 260px;
+  gap: 4px;
+  flex: 0 1 auto;
 }
 
 .log-viewer-title h1 {
   font-family: 'Unbounded', 'Inter', sans-serif;
   font-size: clamp(24px, 4vw, 30px);
   letter-spacing: 0.05em;
+  line-height: 1;
 }
 
 .log-viewer-subtitle {
@@ -991,9 +992,18 @@ button {
   z-index: -1;
 }
 .combatant-card .death-overlay {
+  --overlay-bg-inner: rgba(193, 18, 31, 0.06);
+  --overlay-bg-outer: rgba(7, 6, 8, 0.35);
+  --overlay-band-color: rgba(0, 0, 0, 0.95);
+  --overlay-band-stop: 52%;
+  --overlay-band-glow: rgba(193, 18, 31, 0.32);
+  --overlay-text-color: #b40c12;
+  --overlay-letter-spacing: 0.15em;
+  --overlay-font-size: clamp(14px, 4.1vw, 30px);
+  --overlay-text-shadow: 0 0 18px rgba(0, 0, 0, 0.8), 0 0 12px rgba(180, 12, 18, 0.85);
   align-items: center;
   animation: deathOverlayFade 1.6s ease forwards;
-  background: radial-gradient(circle at center, rgba(193, 18, 31, 0.12), rgba(7, 6, 8, 0.6) 75%);
+  background: radial-gradient(circle at center, var(--overlay-bg-inner), var(--overlay-bg-outer) 75%);
   border-radius: inherit;
   display: flex;
   inset: 0;
@@ -1005,14 +1015,9 @@ button {
   z-index: 6;
 }
 .combatant-card .death-overlay::before {
-  background: linear-gradient(
-    to bottom,
-    rgba(10, 6, 8, 0) 0%,
-    rgba(7, 6, 8, 0.92) 48%,
-    rgba(7, 6, 8, 0) 100%
-  );
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, var(--overlay-band-color) var(--overlay-band-stop), rgba(0, 0, 0, 0) 100%);
   border-radius: clamp(12px, 4vw, 24px);
-  box-shadow: 0 0 46px rgba(193, 18, 31, 0.38);
+  box-shadow: 0 0 46px var(--overlay-band-glow);
   content: '';
   height: clamp(72px, 18vw, 140px);
   inset: 0;
@@ -1024,13 +1029,37 @@ button {
   z-index: 0;
 }
 
+.death-overlay.you-died {
+  --overlay-bg-inner: rgba(193, 18, 31, 0.06);
+  --overlay-bg-outer: rgba(7, 6, 8, 0.35);
+  --overlay-band-color: rgba(0, 0, 0, 0.95);
+  --overlay-band-stop: 52%;
+  --overlay-band-glow: rgba(193, 18, 31, 0.32);
+  --overlay-text-color: #b40c12;
+  --overlay-letter-spacing: 0.15em;
+  --overlay-font-size: clamp(14px, 4.1vw, 30px);
+  --overlay-text-shadow: 0 0 18px rgba(0, 0, 0, 0.8), 0 0 12px rgba(180, 12, 18, 0.85);
+}
+
+.death-overlay.enemy-felled {
+  --overlay-bg-inner: rgba(255, 196, 45, 0.1);
+  --overlay-bg-outer: rgba(18, 12, 2, 0.45);
+  --overlay-band-color: rgba(0, 0, 0, 0.94);
+  --overlay-band-stop: 50%;
+  --overlay-band-glow: rgba(255, 196, 45, 0.4);
+  --overlay-text-color: #ffd869;
+  --overlay-letter-spacing: 0.12em;
+  --overlay-font-size: clamp(14px, 3.7vw, 28px);
+  --overlay-text-shadow: 0 0 18px rgba(0, 0, 0, 0.85), 0 0 14px rgba(255, 196, 45, 0.6);
+}
+
 .death-overlay-text {
-  color: #b40c12;
+  color: var(--overlay-text-color);
   font-family: 'Unbounded', 'Inter', sans-serif;
-  font-size: clamp(14px, 4.1vw, 30px);
-  letter-spacing: 0.15em;
+  font-size: var(--overlay-font-size);
+  letter-spacing: var(--overlay-letter-spacing);
   text-transform: uppercase;
-  text-shadow: 0 0 18px rgba(0, 0, 0, 0.8), 0 0 12px rgba(180, 12, 18, 0.85);
+  text-shadow: var(--overlay-text-shadow);
   white-space: nowrap;
   position: relative;
   z-index: 1;
@@ -1563,6 +1592,13 @@ button.death-save-chip:not(:disabled):hover {
   overflow-y: auto;
   padding: clamp(20px, 5vw, 28px);
   width: min(420px, 100%);
+}
+
+.death-prompt-shell {
+  display: grid;
+  min-height: 100%;
+  place-items: center;
+  width: 100%;
 }
 
 .death-prompt h3 {

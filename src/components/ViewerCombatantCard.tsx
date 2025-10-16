@@ -22,7 +22,11 @@ const ViewerCombatantCard = ({ combatant, isActive }: ViewerCombatantCardProps) 
   const hpWidth = Math.max(0, Math.min(healthPercent, 100)) + '%';
   const isDefeated = combatant.hp.current <= 0;
   const isPlayerOrAlly = combatant.type === 'player' || combatant.type === 'ally';
-  const showDeathOverlay = isPlayerOrAlly && deathSaveStatus === 'dead';
+  const isEnemy = combatant.type === 'enemy';
+  const youDiedOverlayActive = isPlayerOrAlly && deathSaveStatus === 'dead';
+  const enemyFelledOverlayActive = isEnemy && isDefeated;
+  const overlayVariant = youDiedOverlayActive ? 'you-died' : enemyFelledOverlayActive ? 'enemy-felled' : null;
+  const overlayText = overlayVariant === 'enemy-felled' ? 'ENEMY FELLED' : 'YOU DIED';
 
   return (
     <article
@@ -31,9 +35,9 @@ const ViewerCombatantCard = ({ combatant, isActive }: ViewerCombatantCardProps) 
         defeated: isDefeated
       })}
     >
-      {showDeathOverlay ? (
-        <div className="death-overlay" aria-hidden="true">
-          <span className="death-overlay-text">YOU DIED</span>
+      {overlayVariant ? (
+        <div className={clsx('death-overlay', overlayVariant)} aria-hidden="true">
+          <span className={clsx('death-overlay-text', overlayVariant)}>{overlayText}</span>
         </div>
       ) : null}
       <header className="card-head viewer-card-head">
