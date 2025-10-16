@@ -1,4 +1,4 @@
-import type { Combatant, CombatLogEntry, EncounterState, StatusEffectInstance } from '../types';
+import type { Combatant, CombatLogEntry, DeathSaveState, EncounterState, StatusEffectInstance } from '../types';
 
 const API_BASE = '/api/encounters';
 
@@ -14,6 +14,51 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const isCombatantType = (value: unknown): value is Combatant['type'] =>
   value === 'player' || value === 'ally' || value === 'enemy';
+
+const clampTo = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const coerceDeathSaves = (value: unknown): DeathSaveState | null => {
+  if (!isRecord(value)) return null;
+  const statusValue = value.status;
+  if (statusValue !== 'pending' && statusValue !== 'stable' && statusValue !== 'dead') {
+    return null;
+  }
+  const successesValue = Number(value.successes);
+  const failuresValue = Number(value.failures);
+  if (!Number.isFinite(successesValue) || !Number.isFinite(failuresValue)) {
+    return null;
+  }
+  const startedAtValue = Number(value.startedAtRound);
+  if (!Number.isFinite(startedAtValue)) {
+    return null;
+  }
+  const lastRollRaw = value.lastRollRound;
+  const lastRollRound =
+    typeof lastRollRaw === 'number' && Number.isFinite(lastRollRaw)
+      ? clampTo(Math.round(lastRollRaw), 1, Number.MAX_SAFE_INTEGER)
+      : null;
+
+  const successes = clampTo(Math.round(successesValue), 0, 3);
+  const failures = clampTo(Math.round(failuresValue), 0, 3);
+  const startedAtRound = clampTo(Math.max(1, Math.round(startedAtValue)), 1, Number.MAX_SAFE_INTEGER);
+
+  let status: DeathSaveState['status'] = statusValue;
+  if (status === 'pending') {
+    if (failures >= 3) {
+      status = 'dead';
+    } else if (successes >= 3) {
+      status = 'stable';
+    }
+  }
+
+  return {
+    status,
+    successes,
+    failures,
+    startedAtRound,
+    lastRollRound
+  };
+};
 
 const coerceStatus = (value: unknown): StatusEffectInstance | null => {
   if (!isRecord(value)) return null;
@@ -81,6 +126,7 @@ const coerceCombatant = (value: unknown): Combatant | null => {
         .map((status) => coerceStatus(status))
         .filter((status): status is StatusEffectInstance => status !== null)
     : [];
+  const deathSaves = 'deathSaves' in value ? coerceDeathSaves(value.deathSaves) : null;
 
   return {
     id: value.id,
@@ -95,7 +141,8 @@ const coerceCombatant = (value: unknown): Combatant | null => {
     icon: typeof value.icon === 'string' ? value.icon : '❓',
     statuses,
     note: typeof value.note === 'string' ? value.note : undefined,
-    isHidden: typeof value.isHidden === 'boolean' ? value.isHidden : undefined
+    isHidden: typeof value.isHidden === 'boolean' ? value.isHidden : undefined,
+    deathSaves
   };
 };
 
@@ -103,7 +150,8 @@ const sanitizeEncounter = (value: EncounterState): EncounterState => ({
   ...value,
   combatants: value.combatants.map((combatant) => ({
     ...combatant,
-    statuses: Array.isArray(combatant.statuses) ? combatant.statuses : []
+    statuses: Array.isArray(combatant.statuses) ? combatant.statuses : [],
+    deathSaves: coerceDeathSaves(combatant.deathSaves) ?? null
   })),
   log: Array.isArray(value.log)
     ? value.log

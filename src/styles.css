@@ -1194,6 +1194,164 @@ button {
   width: 100%;
 }
 
+.death-saves-panel {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 16px;
+  display: grid;
+  gap: 12px;
+  grid-column: 1 / -1;
+  padding: 12px;
+}
+
+.death-saves-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.death-saves-head h4 {
+  font-size: 14px;
+  margin: 0;
+}
+
+.death-saves-pill {
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  padding: 2px 10px;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+
+.death-saves-pill.stable {
+  background: rgba(43, 147, 72, 0.25);
+  color: #d5fbe0;
+}
+
+.death-saves-pill.dead {
+  background: rgba(214, 40, 40, 0.24);
+  color: #ffd4d4;
+}
+
+.death-saves-tracks {
+  display: grid;
+  gap: 12px;
+}
+
+.death-saves-track {
+  display: grid;
+  gap: 6px;
+}
+
+.death-saves-body {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 0.6fr);
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .death-saves-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.death-saves-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.death-saves-chips {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.death-save-chip {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  transition: transform 0.2s ease, background 0.2s ease, border 0.2s ease, opacity 0.2s ease;
+  width: 28px;
+}
+
+.death-save-chip.success {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: inherit;
+}
+
+button.death-save-chip {
+  cursor: pointer;
+  padding: 0;
+  color: inherit;
+}
+
+button.death-save-chip:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+button.death-save-chip:not(:disabled):hover {
+  transform: translateY(-1px) scale(1.04);
+}
+
+.death-save-chip.success.filled {
+  background: rgba(43, 147, 72, 0.4);
+  border-color: rgba(43, 147, 72, 0.75);
+}
+
+.death-save-chip.failure.filled {
+  background: rgba(214, 40, 40, 0.42);
+  border-color: rgba(214, 40, 40, 0.8);
+}
+
+.death-save-chip.readonly {
+  pointer-events: none;
+}
+
+.death-saves-roll {
+  display: grid;
+  gap: 8px;
+  justify-items: stretch;
+}
+
+.death-saves-roll-buttons {
+  display: grid;
+  gap: 8px;
+}
+
+.death-saves-roll-buttons button {
+  width: 100%;
+}
+
+.death-saves-summary {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.death-saves-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.viewer-death-saves {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 16px;
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
 .status-section,
 .notes-section {
   background: rgba(255, 255, 255, 0.02);
@@ -1332,6 +1490,50 @@ button {
   overflow-y: auto;
   padding: clamp(20px, 5vw, 28px);
   width: min(420px, 100%);
+}
+
+.death-prompt {
+  background: rgba(14, 12, 18, 0.85);
+  border: 1px solid var(--border-soft);
+  border-radius: 18px;
+  display: grid;
+  gap: 16px;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  padding: clamp(20px, 5vw, 28px);
+  width: min(420px, 100%);
+}
+
+.death-prompt h3 {
+  font-family: 'Unbounded', 'Inter', sans-serif;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.death-prompt p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.death-prompt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+button.danger-button {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+button.danger-button:hover:not(:disabled) {
+  background: #b11f1f;
+  border-color: #b11f1f;
 }
 
 .attack-action-head {

@@ -17,6 +17,8 @@ const ViewerCombatantCard = ({ combatant, isActive }: ViewerCombatantCardProps) 
   const healthPercent = combatant.hp.max === 0 ? 0 : Math.round((combatant.hp.current / combatant.hp.max) * 100);
   const hpWidth = Math.max(0, Math.min(healthPercent, 100)) + '%';
   const isDefeated = combatant.hp.current <= 0;
+  const deathSaves = combatant.deathSaves ?? null;
+  const deathSaveStatus = deathSaves?.status ?? null;
 
   return (
     <article
@@ -56,6 +58,45 @@ const ViewerCombatantCard = ({ combatant, isActive }: ViewerCombatantCardProps) 
           </div>
         )}
       </section>
+
+      {deathSaves ? (
+        <section className="viewer-death-saves">
+          <div className="death-saves-head">
+            <h4>Death Saves</h4>
+            {deathSaveStatus === 'stable' ? (
+              <span className="death-saves-pill stable">Stable</span>
+            ) : deathSaveStatus === 'dead' ? (
+              <span className="death-saves-pill dead">Dead</span>
+            ) : null}
+          </div>
+          <div className="death-saves-tracks">
+            <div className="death-saves-track">
+              <span className="death-saves-label">Successes</span>
+              <div className="death-saves-chips">
+                {[0, 1, 2].map((slot) => (
+                  <span
+                    key={'viewer-success-' + slot}
+                    className={clsx('death-save-chip', 'success', { filled: slot < (deathSaves?.successes ?? 0), readonly: true })}
+                    aria-hidden="true"
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="death-saves-track">
+              <span className="death-saves-label">Failures</span>
+              <div className="death-saves-chips">
+                {[0, 1, 2].map((slot) => (
+                  <span
+                    key={'viewer-failure-' + slot}
+                    className={clsx('death-save-chip', 'failure', { filled: slot < (deathSaves?.failures ?? 0), readonly: true })}
+                    aria-hidden="true"
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="status-section viewer-status-section">
         <div className="status-head">
