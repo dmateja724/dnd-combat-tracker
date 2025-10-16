@@ -677,14 +677,14 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
           startedAtRound: current.startedAtRound,
           lastRollRound: action.payload.round
         };
-        if (status === 'dead' && previousStatus !== 'dead') {
+        if (status === 'dead') {
           logEntry = createLogEntry(
             'info',
             `${combatant.name} succumbed to their wounds.`,
             state.round,
             { combatantId: combatant.id }
           );
-        } else if (status === 'stable' && previousStatus !== 'stable') {
+        } else if (status === 'stable') {
           logEntry = createLogEntry(
             'info',
             `${combatant.name} stabilized at 0 HP.`,
