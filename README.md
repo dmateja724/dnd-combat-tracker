@@ -1,169 +1,137 @@
 # Dungeons & Dragons Combat Tracker
 
-A modern React + Vite encounter manager for tabletop combat. Sign in, build encounters, track initiative, and keep your party in sync with the bundled Express + SQLite API server.
+A React + TypeScript encounter manager paired with an Express + SQLite API. Sign in, build encounters, and keep players and the GM synchronized across multiple windows.
 
-## Features
+## Highlights
 
-- Turn timeline with auto-sorted initiative, active combatant highlighting, and a running round counter.
-- Combatant cards with quick damage/heal controls, health bars, AC badges, notes, and status summaries.
-- Status effect panel with preset conditions, fully custom effects, optional round timers, and automatic decrement when rounds advance.
-- Dedicated attack resolution modal to pick an attacker and target, choose damage type, apply damage, and log the outcome automatically.
-- Saved combatant library you can create, edit, and reuse across encounters.
-- Full account backup from the account menu that zips your combatant library plus every encounter (including combat logs), with one-click restore support.
-- Encounter library per account with modal-driven create/rename/delete flows, instant switching, and automatic persistence.
-- Dice tray for common polyhedral rolls plus rewind/advance turn controls, backed by secure email/password auth with HTTP-only cookies.
-- Pop-out combat log viewer that mirrors every action (attacks, damage, healing, statuses, turns) with persistent history per encounter.
-- Pop-out player viewer window that mirrors the active encounter so players can track turns without touching the GM screen.
+- Initiative timeline that auto-sorts combatants, highlights the active turn, and tracks the current round.
+- Combatant cards with quick damage/heal buttons, editable HP/AC/notes, custom status effects (with optional round timers), and attack logging.
+- Encounter manager for creating, renaming, deleting, and switching between encounters without leaving the tracker.
+- Saved combatant library so common stat blocks can be stored once and dropped into any fight.
+- Pop-out player view (`/viewer`) and pop-out combat log (`/log`) that mirror the main tracker via `BroadcastChannel`.
+- Dice tray and turn controls (advance/rewind) for fast round management.
+- Account-level backup and restore that packages encounters, combat logs, and the combatant library into a single ZIP file.
 
-## Tech Stack
+## Architecture
 
-- React 18 with TypeScript, Vite, and React Router on the client.
-- Context-based state management with dedicated hooks for auth, encounters, and combatant templates.
-- Express API written in TypeScript, powered by better-sqlite3 for fast local persistence.
-- JSON Web Tokens issued as HTTP-only cookies for session management.
-- Developer workflow via Vite for the client, `tsx` for the API watcher, and `concurrently` for combined dev mode.
+- React 18 + Vite + React Router on the client with context-driven state (auth, encounters, combatant library, combat tracker).
+- Express API written in TypeScript, backed by `better-sqlite3` for local persistence under `data/combat-tracker.db`.
+- Email/password authentication with bcrypt hashing and JWTs stored in HTTP-only cookies.
+- Encounter state is persisted on every change and broadcast to any open windows (tracker, viewer, log) to keep them in sync.
 
 ## Prerequisites
 
 - Node.js 18 or newer.
 - npm (bundled with Node).
-- On Linux, make sure `python3`, `make`, and a C/C++ toolchain (such as `build-essential`) are available so `better-sqlite3` can compile.
+- On Linux, install `python3`, `make`, and a C/C++ toolchain so `better-sqlite3` can compile native bindings.
+
+## Quick Start
+
+1. Install dependencies: `npm install`
+2. Start the API server (default http://localhost:4000): `npm run server`
+3. In another terminal, launch the Vite dev server (http://localhost:5173): `npm run dev`
+4. Prefer one command? Use `npm run dev:all` to run both concurrently.
+5. Sign up or sign in within the app, create/select an encounter, add combatants, and run combat while the log records actions automatically.
+
+The Vite dev server proxies `/api` requests to the API (configured in `vite.config.ts`), so keep the backend running alongside the frontend.
 
 ## Environment Variables
 
-- `PORT` - port for the API server (default `4000`).
-- `JWT_SECRET` - secret used to sign session tokens; set this to a strong value in production (default `change-me-in-production`).
-- `NODE_ENV` - set to `production` in deployed environments so cookies are marked secure.
+- `PORT` – port for the API server (default `4000`).
+- `JWT_SECRET` – secret used to sign JWT session cookies (default `change-me-in-production`).
+- `NODE_ENV` – set to `production` in deployed environments to enable secure cookies.
 
-Export variables inline when running scripts, for example:
+Example usage:
 
 ```
 PORT=4100 JWT_SECRET=supersecret npm run server
 ```
 
-## Local Development
+## npm Scripts
 
-1. Install dependencies:
-
-        npm install
-
-2. Start the API server (defaults to http://localhost:4000):
-
-        npm run server
-
-3. In a separate terminal, start the Vite dev server (http://localhost:5173):
-
-        npm run dev
-
-   The dev server proxies `/api` calls to the API (see `vite.config.ts`), so keep the API process running.
-
-4. Prefer a single command? Launch both processes together:
-
-        npm run dev:all
-
-5. Sign up or sign in inside the app, create an encounter, add combatants, then use the **Attack** action or quick damage buttons to drive the turn-by-turn flow while the combat log records every event.
+- `npm run dev` – start the Vite dev server.
+- `npm run server` – run the Express API with `tsx`.
+- `npm run dev:all` – run API and frontend together via `concurrently`.
+- `npm run build` – type-check and build the production bundle.
+- `npm run preview` – serve the built frontend (requires the API running separately).
+- `npm run deploy` – build and redeploy the Docker stack with the current package version.
+- `npm run version:print` – print the package version.
 
 ## Account Backup & Restore
 
-- Open the tracker’s account (☰) menu and choose **Export Account** to download a ZIP file (named `combat-tracker-backup-YYYY-MM-DD.zip`). It bundles:
-  - `combatant-library.json` – all saved templates.
-  - `encounters/*.json` – one file per encounter with full combat state and log.
-  - `metadata.json` – backup metadata (version, counts, timestamp).
-- Choose **Import Account** from the same menu (or from the empty encounter selector) to restore a backup. The upload flow replaces your current encounters and combatant library, refreshes the UI, and selects the first restored encounter automatically.
-- Warnings are displayed in-app if individual files cannot be parsed so you know what needs attention.
-- Imports require confirmation because they overwrite existing data; exports and imports both run client-side in the browser.
+- Use the tracker account menu (☰) or the encounter selector to **Export Account**. The downloaded `combat-tracker-backup-YYYY-MM-DD.zip` contains:
+  - `combatant-library.json` – saved combatant templates.
+  - `encounters/*.json` – encounter metadata, state, and combat log.
+  - `metadata.json` – counts, version, and timestamp.
+- Importing a backup replaces the current encounters and combatant library after user confirmation. Warnings are surfaced in-app if any files are skipped.
 
-## Build & Preview
+## Persistence & Data
 
-Create a production build of the client and serve it locally:
+- The API stores data in `data/combat-tracker.db` (created on first run).
+- Encounter schemas are validated on startup; incompatible tables are recreated automatically.
+- Sessions live in an HTTP-only cookie named `combat_tracker_token` with a seven-day lifetime.
 
-        npm run build
-        npm run preview
+Delete the database file to wipe all accounts, encounters, and templates (irreversible).
 
-`npm run build` runs TypeScript checks and `vite build`. `npm run preview` serves the static client; run `npm run server` in another terminal so API requests continue to work.
+## API Overview
 
-## Versioning & Deployment
+Authenticated endpoints require the session cookie; sign-up and sign-in do not.
 
-- Bump the version with `npm version <patch|minor|major>` (or a specific semver); the version in `package.json` drives the entire build.
-- Inspect the current version at any time with `npm run version:print`.
-- `npm run deploy` now reads the package version, builds the Docker images with `APP_VERSION`/`VITE_APP_VERSION` set, and tags the images as `:<version>`.
-- The compiled frontend exposes the active version as a `<meta name="app-version">` tag and surfaces it in the account menu for quick verification after a deploy.
+- `POST /api/signup` – create an account.
+- `POST /api/login` – sign in and receive a session cookie.
+- `POST /api/logout` – clear the session cookie.
+- `GET /api/session` – return the current user or `204` if unauthenticated.
+- `GET /api/encounters` – list encounter summaries.
+- `POST /api/encounters` – create an encounter.
+- `GET /api/encounters/:id` – load encounter state.
+- `PUT /api/encounters/:id/state` – persist encounter state changes.
+- `PATCH /api/encounters/:id` – rename an encounter.
+- `DELETE /api/encounters/:id` – delete an encounter.
+- `GET /api/combatants` – list saved combatant templates.
+- `POST /api/combatants` – create a template.
+- `PUT /api/combatants/:id` – update a template.
+- `DELETE /api/combatants/:id` – delete a template.
 
-## Docker
-
-A multi-stage `Dockerfile` is included with two targets:
-
-- `frontend` - builds the Vite client and serves it with Nginx.
-- `api` - runs the Express server on Node.js.
-
-The accompanying `docker-compose.yml` ties both together and persists the SQLite database. Example usage:
-
-```
-docker compose build
-JWT_SECRET=supersecret docker compose up -d
-```
-
-You can also run the included helper script, which builds the images and redeploys the stack in one step:
-
-```
-npm run deploy
-```
-
-The API listens on port 4000 inside the compose network, the frontend on port 80, and `./data` is mounted into the API container so database files survive restarts. Adjust Traefik labels or networks in `docker-compose.yml` to match your infrastructure.
-
-## Data & Persistence
-
-- The API creates and manages a SQLite database at `data/combat-tracker.db`; delete that file to wipe all accounts, encounters, and saved combatants.
-- Schema migrations are handled at server start (tables are recreated if shapes change). Removing tables manually may cause data loss.
-- Sessions are stored in an HTTP-only cookie named `combat_tracker_token` with a seven-day lifetime.
-
-## Project Structure
+## Project Layout
 
 ```
 dnd-combat-tracker/
   src/
-    components/          Combat tracker UI pieces (tracker, cards, modals, forms)
-    context/             Global providers for auth, encounters, and saved combatants
-    data/                Client-side API helpers and preset libraries
-    hooks/               Encounter state management and persistence logic
-    pages/               Auth routes
-    App.tsx              Router and protected route shell
+    components/          Tracker UI (main tracker, viewer, log, forms, modals)
+    context/             React context providers (auth, encounters, combatant library)
+    data/                Client-side API clients and preset libraries
+    hooks/               Encounter state management (useCombatTracker)
+    pages/               Auth pages (sign-in/sign-up)
+    utils/               Account backup helpers
+    App.tsx              App routing and guards
     main.tsx             App bootstrap
-    styles.css           App-wide styling
+    styles.css           Global styling
     types.ts             Shared TypeScript types
   server/
     index.ts             Express API entry point
+  scripts/
+    deploy.mjs           Docker deploy helper
   public/                Static assets served by Vite
-  data/                  SQLite database lives here at runtime
+  data/                  SQLite database location (runtime)
   Dockerfile             Multi-stage build for frontend and API
-  docker-compose.yml     Compose stack for nginx + API + Traefik labels
-  nginx.conf             Nginx config used by the frontend image
-  vite.config.ts         Vite dev/proxy configuration
+  docker-compose.yml     Compose stack tying API + frontend together
+  nginx.conf             Frontend Nginx config used in the Docker build
   index.html             Vite entry document
   package.json
+  vite.config.ts         Vite config with proxy + version injection
 ```
 
-## API Overview
+## Customization
 
-All data routes (except sign-up and sign-in) require an authenticated session via HTTP-only cookie:
+- Edit `src/data/statusEffects.ts` to add or tweak preset status effects.
+- Add or rename avatar icons in `src/data/combatantIcons.ts`.
+- Adjust look-and-feel in `src/styles.css`.
+- Extend the Express API in `server/index.ts` if you need remote sync or alternate persistence.
 
-- `POST /api/signup`, `POST /api/login`, `POST /api/logout`, `GET /api/session` - authentication lifecycle.
-- `GET /api/encounters` - list encounter summaries.
-- `POST /api/encounters` - create an encounter.
-- `GET /api/encounters/:id` - fetch encounter details and state.
-- `PUT /api/encounters/:id/state` - persist encounter state changes.
-- `PATCH /api/encounters/:id` - rename an encounter.
-- `DELETE /api/encounters/:id` - delete an encounter.
-- `GET /api/combatants` - list saved combatant templates.
-- `POST /api/combatants` - create a saved combatant template.
-- `PUT /api/combatants/:id` - update a saved combatant template.
-- `DELETE /api/combatants/:id` - delete a saved combatant template.
+## Docker & Deployment
 
-## Customizing
-
-- Extend `src/data/statusEffects.ts` to add or tweak preset conditions for your table.
-- Add new icons or labels in `src/data/combatantIcons.ts` to theme the avatar picker.
-- Update CSS variables and layout rules in `src/styles.css` to match your campaign branding.
-- Enhance or replace API routes in `server/index.ts` if you need remote sync, additional fields, or alternate persistence.
+- The multi-stage `Dockerfile` builds the frontend and API images.
+- `docker-compose.yml` runs the stack (frontend served by Nginx, API on Node.js) and mounts `./data` for persistent storage.
+- `npm run deploy` reads the package version, sets `APP_VERSION`/`VITE_APP_VERSION`, runs `docker compose build`, then `docker compose up -d`.
 
 Happy adventuring!

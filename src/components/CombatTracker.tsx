@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, CSSProperties } from 'react';
 import clsx from 'clsx';
 import { useCombatTracker } from '../hooks/useCombatTracker';
-import InitiativeList from './InitiativeList';
 import CombatantCard from './CombatantCard';
 import AddCombatantForm from './forms/AddCombatantForm';
 import AttackActionForm from './forms/AttackActionForm';
@@ -29,8 +28,6 @@ const CombatTracker = () => {
   const [isAttackModalOpen, setIsAttackModalOpen] = useState(false);
   const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(!selectedEncounterId);
   const [lastRoll, setLastRoll] = useState<{ die: number; result: number } | null>(null);
-  const initiativeScrollRef = useRef<HTMLDivElement | null>(null);
-  const initiativeRefs = useRef(new Map<string, HTMLLIElement>());
   const viewerWindowRef = useRef<Window | null>(null);
   const logWindowRef = useRef<Window | null>(null);
   const accountButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -43,28 +40,6 @@ const CombatTracker = () => {
   const handleAddStatus = (combatantId: string, template: StatusEffectTemplate, rounds: number | null, note?: string) => {
     actions.addStatus(combatantId, template, rounds, note);
   };
-
-  const scrollItemIntoView = (container: HTMLElement, element: HTMLElement) => {
-    const containerRect = container.getBoundingClientRect();
-    const elementRect = element.getBoundingClientRect();
-
-    if (elementRect.top < containerRect.top) {
-      container.scrollBy({ top: elementRect.top - containerRect.top - 12, behavior: 'smooth' });
-      return;
-    }
-
-    if (elementRect.bottom > containerRect.bottom) {
-      container.scrollBy({ top: elementRect.bottom - containerRect.bottom + 12, behavior: 'smooth' });
-    }
-  };
-
-  useEffect(() => {
-    if (!state.activeCombatantId) return;
-    const container = initiativeScrollRef.current;
-    const item = initiativeRefs.current.get(state.activeCombatantId);
-    if (!container || !item) return;
-    scrollItemIntoView(container, item);
-  }, [state.activeCombatantId, state.combatants]);
 
   useEffect(() => {
     setIsSelectionModalOpen(!selectedEncounterId);
@@ -116,9 +91,26 @@ const CombatTracker = () => {
     };
   }, []);
 
+  const handleResetEncounter = () => {
+    if (!selectedEncounterId) return;
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm('Reset this encounter? This action cannot be undone.');
+      if (!confirmed) {
+        return;
+      }
+    }
+    actions.resetEncounter();
+    setIsAccountMenuOpen(false);
+  };
+
   const handleCloseSelectionModal = () => {
     if (!selectedEncounterId) return;
     setIsSelectionModalOpen(false);
+  };
+
+  const handleOpenEncounterSelector = () => {
+    setIsAccountMenuOpen(false);
+    setIsSelectionModalOpen(true);
   };
 
   const rollDie = (sides: number) => {
@@ -304,21 +296,13 @@ const CombatTracker = () => {
       <header className="tracker-header">
         <div className="tracker-top-row">
           <div className="tracker-heading">
-            <h1>D&D Combat Tracker</h1>
-            <p className="tracker-subtitle">Keep the encounter flowing with initiative, damage, and status tracking.</p>
+            <h1>{selectedEncounter?.name ?? 'Untitled Encounter'}</h1>
           </div>
           <div className="tracker-round">
             <span className="label">Round</span>
             <span className="value">{state.round}</span>
           </div>
           <div className="tracker-meta">
-            <div className="session-info">
-              <span className="session-label">Encounter</span>
-              <span className="session-value">{selectedEncounter?.name ?? 'Untitled Encounter'}</span>
-              <button type="button" className="ghost" onClick={() => setIsSelectionModalOpen(true)}>
-                Switch
-              </button>
-            </div>
             <div className="account-menu-wrapper">
               <button
                 type="button"
@@ -349,6 +333,9 @@ const CombatTracker = () => {
                   <div className="account-menu-header" role="presentation">
                     <span className={accountNameClass}>{accountLabel}</span>
                   </div>
+                  <button type="button" onClick={handleOpenEncounterSelector} role="menuitem">
+                    Switch Encounter
+                  </button>
                   <button type="button" onClick={openLogWindow} role="menuitem">
                     Open Combat Log
                   </button>
@@ -371,6 +358,14 @@ const CombatTracker = () => {
                   >
                     {isImportingAccount ? 'Importing…' : 'Import Account'}
                   </button>
+                  <button
+                    type="button"
+                    onClick={handleResetEncounter}
+                    role="menuitem"
+                    disabled={!selectedEncounterId}
+                  >
+                    Reset Encounter
+                  </button>
                   <button type="button" onClick={() => void handleSignOut()} role="menuitem">
                     Sign Out
                   </button>
@@ -382,56 +377,36 @@ const CombatTracker = () => {
             </div>
           </div>
         </div>
-        <div className="dice-tray" aria-live="polite">
-          <div className="dice-buttons">
-            {[20, 12, 10, 8, 6, 4].map((sides) => (
-              <button
-                key={'die-' + sides}
-                type="button"
-                className="ghost"
-                onClick={() => rollDie(sides)}
-              >
-                d{sides}
-              </button>
-            ))}
+        <div className="header-secondary">
+          <button
+            type="button"
+            className="primary header-add-combatant"
+            onClick={() => setIsCreateModalOpen(true)}
+            disabled={!selectedEncounterId}
+          >
+            Add Combatant
+          </button>
+          <div className="dice-tray" aria-live="polite">
+            <div className="dice-buttons">
+              {[20, 12, 10, 8, 6, 4].map((sides) => (
+                <button
+                  key={'die-' + sides}
+                  type="button"
+                  className="ghost"
+                  onClick={() => rollDie(sides)}
+                >
+                  d{sides}
+                </button>
+              ))}
+            </div>
+            <p className={`dice-result${lastRoll ? '' : ' is-empty'}`}>
+              {lastRoll ? `Rolled d${lastRoll.die}: ${lastRoll.result}` : 'Roll a die to see the result here.'}
+            </p>
           </div>
-          <p className={`dice-result${lastRoll ? '' : ' is-empty'}`}>
-            {lastRoll ? `Rolled d${lastRoll.die}: ${lastRoll.result}` : 'Roll a die to see the result here.'}
-          </p>
         </div>
       </header>
 
       <div className="tracker-main">
-        <aside className="initiative-column">
-          <section className="initiative-bar">
-            <div className="panel-head">
-              <h2>Initiative Order</h2>
-              <button type="button" className="ghost" onClick={() => setIsCreateModalOpen(true)}>
-                Add Combatant
-              </button>
-            </div>
-
-            <div className="initiative-scroll" ref={initiativeScrollRef}>
-              <InitiativeList
-                combatants={state.combatants}
-                activeId={state.activeCombatantId}
-                onSelect={actions.setActiveCombatant}
-                registerItemRef={(id, node) => {
-                  if (node) {
-                    initiativeRefs.current.set(id, node);
-                  } else {
-                    initiativeRefs.current.delete(id);
-                  }
-                }}
-              />
-            </div>
-
-            <button type="button" className="ghost wide" onClick={actions.resetEncounter}>
-              Reset Encounter
-            </button>
-          </section>
-        </aside>
-
         <section className="combatant-strip">
           <div className="turn-controls turn-controls--carousel">
             <button type="button" onClick={actions.rewindTurn} className="ghost">
