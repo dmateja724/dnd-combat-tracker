@@ -39,12 +39,19 @@ export interface AttackActionInput {
   damageType: string;
 }
 
+export interface HealActionInput {
+  targetId: string;
+  amount: number;
+  healingType: string;
+}
+
 type TrackerAction =
   | { type: 'add-combatant'; payload: Combatant }
   | { type: 'remove-combatant'; payload: { id: string } }
   | { type: 'update-combatant'; payload: { id: string; changes: UpdateCombatantInput } }
   | { type: 'apply-delta'; payload: { id: string; delta: number } }
   | { type: 'attack'; payload: AttackActionInput }
+  | { type: 'heal'; payload: HealActionInput }
   | { type: 'set-active'; payload: { id: string | null } }
   | { type: 'advance' }
   | { type: 'rewind' }
@@ -314,6 +321,47 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
         {
           combatantId: target.id,
           amount: appliedDamage
+        }
+      );
+      return {
+        ...state,
+        combatants,
+        log: appendLog(state.log, logEntry)
+      };
+    }
+    case 'heal': {
+      const target = state.combatants.find((combatant) => combatant.id === action.payload.targetId);
+      if (!target) {
+        return state;
+      }
+      const sanitizedAmount = Number.isFinite(action.payload.amount) ? Math.max(0, Math.round(action.payload.amount)) : 0;
+      const missingHp = Math.max(0, target.hp.max - target.hp.current);
+      const appliedHealing = Math.min(missingHp, sanitizedAmount);
+      const nextHp = Math.min(target.hp.max, target.hp.current + appliedHealing);
+      const combatants =
+        appliedHealing > 0
+          ? state.combatants.map((combatant) =>
+              combatant.id === target.id
+                ? {
+                    ...combatant,
+                    hp: {
+                      ...combatant.hp,
+                      current: nextHp
+                    }
+                  }
+                : combatant
+            )
+          : state.combatants;
+      const targetName = target.name;
+      const healingType = action.payload.healingType.trim();
+      const healingSuffix = healingType ? ` via ${healingType}` : '';
+      const logEntry = createLogEntry(
+        'heal',
+        `${targetName} regained ${appliedHealing} HP${healingSuffix} (${nextHp}/${target.hp.max}).`,
+        state.round,
+        {
+          combatantId: target.id,
+          amount: appliedHealing
         }
       );
       return {
@@ -604,6 +652,10 @@ export const useCombatTracker = (encounterId: string | null) => {
     dispatch({ type: 'attack', payload: input });
   }, []);
 
+  const recordHeal = useCallback((input: HealActionInput) => {
+    dispatch({ type: 'heal', payload: input });
+  }, []);
+
   const setActiveCombatant = useCallback((id: string) => {
     dispatch({ type: 'set-active', payload: { id } });
   }, []);
@@ -672,6 +724,7 @@ export const useCombatTracker = (encounterId: string | null) => {
       updateCombatant,
       applyDelta,
       recordAttack,
+      recordHeal,
       setActiveCombatant,
       advanceTurn,
       rewindTurn,
