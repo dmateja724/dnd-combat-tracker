@@ -12,6 +12,7 @@ export interface StatusEffectInstance extends StatusEffectTemplate {
   instanceId: string;
   remainingRounds: number | null;
   note?: string;
+  level?: number;
 }
 
 export interface Combatant {
