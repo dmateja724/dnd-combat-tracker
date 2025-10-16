@@ -648,7 +648,11 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
           return combatant;
         }
         const current = combatant.deathSaves;
-        if (!current || current.status === 'dead' || current.status === 'stable') {
+        if (!current) {
+          return combatant;
+        }
+        const previousStatus = current.status;
+        if (previousStatus === 'dead' || previousStatus === 'stable') {
           return combatant;
         }
         let successes = current.successes;
@@ -673,14 +677,14 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
           startedAtRound: current.startedAtRound,
           lastRollRound: action.payload.round
         };
-        if (status === 'dead' && current.status !== 'dead') {
+        if (status === 'dead' && previousStatus !== 'dead') {
           logEntry = createLogEntry(
             'info',
             `${combatant.name} succumbed to their wounds.`,
             state.round,
             { combatantId: combatant.id }
           );
-        } else if (status === 'stable' && current.status !== 'stable') {
+        } else if (status === 'stable' && previousStatus !== 'stable') {
           logEntry = createLogEntry(
             'info',
             `${combatant.name} stabilized at 0 HP.`,
