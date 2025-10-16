@@ -293,20 +293,27 @@ const CombatantCard = ({
 
           <div className="status-chips">
             {combatant.statuses.length === 0 && <span className="muted">None</span>}
-            {combatant.statuses.map((status) => (
-              <button
-                key={status.instanceId}
-                type="button"
-                className="status-chip"
-                style={{ backgroundColor: status.color }}
-                onClick={() => onRemoveStatus(status.instanceId)}
-                title={status.note || status.description || status.label}
-              >
-                <span className="icon">{status.icon}</span>
-                <span>{status.label}</span>
-                {status.remainingRounds !== null ? <span className="rounds">{status.remainingRounds}</span> : null}
-              </button>
-            ))}
+            {combatant.statuses.map((status) => {
+              const isExhaustion = status.id === 'exhaustion';
+              const exhaustionLevel = status.level ?? 1;
+              return (
+                <button
+                  key={status.instanceId}
+                  type="button"
+                  className={clsx('status-chip', { 'has-meta': isExhaustion })}
+                  style={{ backgroundColor: status.color }}
+                  onClick={() => onRemoveStatus(status.instanceId)}
+                  title={status.note || status.description || status.label}
+                >
+                  <span className="icon">{status.icon}</span>
+                  <span className="status-text">
+                    {isExhaustion ? <span className="status-meta">Level: {exhaustionLevel}</span> : null}
+                    <span>{status.label}</span>
+                  </span>
+                  {status.remainingRounds !== null ? <span className="rounds">{status.remainingRounds}</span> : null}
+                </button>
+              );
+            })}
           </div>
         </section>
 

@@ -65,18 +65,25 @@ const ViewerCombatantCard = ({ combatant, isActive }: ViewerCombatantCardProps) 
           {combatant.statuses.length === 0 ? (
             <span className="muted">None</span>
           ) : (
-            combatant.statuses.map((status) => (
-              <div
-                key={status.instanceId}
-                className="status-chip"
-                style={{ backgroundColor: status.color }}
-                title={status.note || status.description || status.label}
-              >
-                <span className="icon">{status.icon}</span>
-                <span>{status.label}</span>
-                {status.remainingRounds !== null ? <span className="rounds">{status.remainingRounds}</span> : null}
-              </div>
-            ))
+            combatant.statuses.map((status) => {
+              const isExhaustion = status.id === 'exhaustion';
+              const exhaustionLevel = status.level ?? 1;
+              return (
+                <div
+                  key={status.instanceId}
+                  className={clsx('status-chip', { 'has-meta': isExhaustion })}
+                  style={{ backgroundColor: status.color }}
+                  title={status.note || status.description || status.label}
+                >
+                  <span className="icon">{status.icon}</span>
+                  <span className="status-text">
+                    {isExhaustion ? <span className="status-meta">Level: {exhaustionLevel}</span> : null}
+                    <span>{status.label}</span>
+                  </span>
+                  {status.remainingRounds !== null ? <span className="rounds">{status.remainingRounds}</span> : null}
+                </div>
+              );
+            })
           )}
         </div>
       </section>

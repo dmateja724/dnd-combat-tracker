@@ -21,6 +21,8 @@ const coerceStatus = (value: unknown): StatusEffectInstance | null => {
   if (typeof value.id !== 'string' || typeof value.label !== 'string') return null;
   if (typeof value.icon !== 'string' || typeof value.color !== 'string') return null;
   if (!(typeof value.remainingRounds === 'number' || value.remainingRounds === null)) return null;
+  const level = value.level;
+  const normalizedLevel = typeof level === 'number' && Number.isFinite(level) ? Math.max(1, Math.round(level)) : undefined;
 
   return {
     id: value.id,
@@ -30,7 +32,8 @@ const coerceStatus = (value: unknown): StatusEffectInstance | null => {
     icon: value.icon,
     instanceId: value.instanceId,
     remainingRounds: value.remainingRounds,
-    note: typeof value.note === 'string' ? value.note : undefined
+    note: typeof value.note === 'string' ? value.note : undefined,
+    level: normalizedLevel
   };
 };
 

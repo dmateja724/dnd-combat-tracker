@@ -425,25 +425,60 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
       };
     }
     case 'add-status': {
-      const owner = state.combatants.find((combatant) => combatant.id === action.payload.id);
-      const combatants = state.combatants.map((combatant) =>
-        combatant.id === action.payload.id
+      const ownerIndex = state.combatants.findIndex((combatant) => combatant.id === action.payload.id);
+      if (ownerIndex === -1) {
+        return state;
+      }
+      const owner = state.combatants[ownerIndex];
+      const incomingStatus = action.payload.status;
+      let updatedStatuses: StatusEffectInstance[];
+      let logMessage: string | null = null;
+
+      if (incomingStatus.id === 'exhaustion') {
+        const existing = owner.statuses.find((status) => status.id === 'exhaustion');
+        if (existing) {
+          const nextLevel = (existing.level ?? 1) + 1;
+          const mergedStatus: StatusEffectInstance = {
+            ...existing,
+            level: nextLevel,
+            remainingRounds: incomingStatus.remainingRounds ?? existing.remainingRounds,
+            note: incomingStatus.note ?? existing.note
+          };
+          updatedStatuses = owner.statuses.map((status) =>
+            status.instanceId === existing.instanceId ? mergedStatus : status
+          );
+          logMessage = `${owner.name}'s ${incomingStatus.icon} ${incomingStatus.label} increased to Level ${nextLevel}.`;
+        } else {
+          const initialStatus: StatusEffectInstance = {
+            ...incomingStatus,
+            level: 1
+          };
+          updatedStatuses = [...owner.statuses, initialStatus];
+          logMessage = `${owner.name} gained ${incomingStatus.icon} ${incomingStatus.label} (Level 1).`;
+        }
+      } else {
+        updatedStatuses = [...owner.statuses, incomingStatus];
+        logMessage = `${owner.name} gained ${incomingStatus.icon} ${incomingStatus.label}${
+          incomingStatus.remainingRounds !== null ? ` (${incomingStatus.remainingRounds} rounds)` : ''
+        }.`;
+      }
+
+      const combatants = state.combatants.map((combatant, index) =>
+        index === ownerIndex
           ? {
               ...combatant,
-              statuses: [...combatant.statuses, action.payload.status]
+              statuses: updatedStatuses
             }
           : combatant
       );
-      const entry = owner
-        ? createLogEntry(
-            'status-add',
-            `${owner.name} gained ${action.payload.status.icon} ${action.payload.status.label}${
-              action.payload.status.remainingRounds !== null ? ` (${action.payload.status.remainingRounds} rounds)` : ''
-            }.`,
-            state.round,
-            { combatantId: owner.id }
-          )
-        : null;
+
+      const entry =
+        logMessage !== null
+          ? createLogEntry('status-add', logMessage, state.round, {
+              combatantId: owner.id
+            })
+          : null;
+
       return {
         ...state,
         combatants,
