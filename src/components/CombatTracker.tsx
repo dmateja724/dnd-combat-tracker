@@ -5,6 +5,7 @@ import { useCombatTracker } from '../hooks/useCombatTracker';
 import CombatantCard from './CombatantCard';
 import AddCombatantForm from './forms/AddCombatantForm';
 import AttackActionForm from './forms/AttackActionForm';
+import HealActionForm from './forms/HealActionForm';
 import Modal from './Modal';
 import type { StatusEffectTemplate } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -26,6 +27,7 @@ const CombatTracker = () => {
   const { refresh: refreshCombatantLibrary } = useCombatantLibrary();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAttackModalOpen, setIsAttackModalOpen] = useState(false);
+  const [isHealModalOpen, setIsHealModalOpen] = useState(false);
   const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(!selectedEncounterId);
   const [lastRoll, setLastRoll] = useState<{ die: number; result: number } | null>(null);
   const viewerWindowRef = useRef<Window | null>(null);
@@ -420,6 +422,14 @@ const CombatTracker = () => {
             >
               ⚔️ Attack
             </button>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => setIsHealModalOpen(true)}
+              disabled={state.combatants.length === 0}
+            >
+              ✨ Heal
+            </button>
             <button type="button" onClick={actions.advanceTurn} className="primary">
               Next ⏭
             </button>
@@ -488,6 +498,21 @@ const CombatTracker = () => {
             setIsAttackModalOpen(false);
           }}
           onCancel={() => setIsAttackModalOpen(false)}
+        />
+      </Modal>
+      <Modal
+        isOpen={isHealModalOpen}
+        onClose={() => setIsHealModalOpen(false)}
+        ariaLabel="Apply healing form"
+      >
+        <HealActionForm
+          combatants={state.combatants}
+          defaultTargetId={state.activeCombatantId}
+          onSubmit={(payload) => {
+            actions.recordHeal(payload);
+            setIsHealModalOpen(false);
+          }}
+          onCancel={() => setIsHealModalOpen(false)}
         />
       </Modal>
       <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} ariaLabel="Add combatant form">

@@ -5,7 +5,8 @@ A React + TypeScript encounter manager paired with an Express + SQLite API. Sign
 ## Highlights
 
 - Initiative timeline that auto-sorts combatants, highlights the active turn, and tracks the current round.
-- Combatant cards with quick damage/heal buttons, editable HP/AC/notes, custom status effects (with optional round timers), and attack logging.
+- Combatant cards with quick damage/heal buttons, editable HP/AC/notes, custom status effects (with optional round timers), and automatically logged attack and healing events.
+- Dedicated modals for resolving multi-target attacks and single-target healing with optional source annotations.
 - Encounter manager for creating, renaming, deleting, and switching between encounters without leaving the tracker.
 - Saved combatant library so common stat blocks can be stored once and dropped into any fight.
 - Pop-out player view (`/viewer`) and pop-out combat log (`/log`) that mirror the main tracker via `BroadcastChannel`.
@@ -31,7 +32,12 @@ A React + TypeScript encounter manager paired with an Express + SQLite API. Sign
 2. Start the API server (default http://localhost:4000): `npm run server`
 3. In another terminal, launch the Vite dev server (http://localhost:5173): `npm run dev`
 4. Prefer one command? Use `npm run dev:all` to run both concurrently.
-5. Sign up or sign in within the app, create/select an encounter, add combatants, and run combat while the log records actions automatically.
+5. Sign up or sign in within the app, create/select an encounter, add combatants, and resolve attacks or healing from the turn controls while the log records actions automatically.
+
+### Resolving Combat Actions
+
+- Use the ⚔️ Attack button to open the attack modal, choose an attacker/target, and apply damage with an optional damage type.
+- Use the ✨ Heal button to open the healing modal, pick who regains hit points, optionally note the source (spell, potion, etc.), and apply the restoration with built-in clamping to max HP.
 
 The Vite dev server proxies `/api` requests to the API (configured in `vite.config.ts`), so keep the backend running alongside the frontend.
 
