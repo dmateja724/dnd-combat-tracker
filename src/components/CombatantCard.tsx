@@ -39,7 +39,7 @@ const CombatantCard = ({
   onAddStatus,
   onRemoveStatus
 }: CombatantCardProps) => {
-  const [customValue, setCustomValue] = useState(6);
+  const [customValue, setCustomValue] = useState('');
   const [noteDraft, setNoteDraft] = useState(combatant.note ?? '');
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [statusPanelOpen, setStatusPanelOpen] = useState(false);
@@ -90,6 +90,7 @@ const CombatantCard = ({
   }, [combatant.hp.current, combatant.hp.max]);
 
   const isDefeated = combatant.hp.current <= 0;
+  const isCustomValueEmpty = customValue.trim() === '';
 
   const handleNoteSubmit = () => {
     onUpdate({ note: noteDraft });
@@ -239,29 +240,41 @@ const CombatantCard = ({
           className="custom-row"
           onSubmit={(event) => {
             event.preventDefault();
-            const amount = Math.max(0, Number(customValue) || 0);
+            if (isCustomValueEmpty) return;
+            const amount = Math.max(0, Number.parseInt(customValue, 10) || 0);
             if (amount === 0) return;
             onDamage(amount);
+            setCustomValue('');
           }}
         >
           <label htmlFor={'custom-amount-' + combatant.id}>Custom</label>
           <input
             id={'custom-amount-' + combatant.id}
-            type="number"
-            min={0}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={customValue}
-            onChange={(event) => setCustomValue(Number(event.target.value))}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (/^\d*$/.test(value)) {
+                setCustomValue(value);
+              }
+            }}
+            placeholder="0"
           />
-          <button type="submit" className="primary">
+          <button type="submit" className="primary" disabled={isCustomValueEmpty}>
             Apply Damage
           </button>
           <button
             type="button"
-            className="ghost"
+            className="success"
+            disabled={isCustomValueEmpty}
             onClick={() => {
-              const amount = Math.max(0, Number(customValue) || 0);
+              if (isCustomValueEmpty) return;
+              const amount = Math.max(0, Number.parseInt(customValue, 10) || 0);
               if (amount === 0) return;
               onHeal(amount);
+              setCustomValue('');
             }}
           >
             Apply Heal

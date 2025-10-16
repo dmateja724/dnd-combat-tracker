@@ -12,43 +12,55 @@ interface AddCombatantFormProps {
 type FormState = {
   name: string;
   type: AddCombatantInput['type'];
-  initiative: number;
-  maxHp: number;
-  ac: number;
+  initiative: string;
+  maxHp: string;
+  ac: string;
   icon: string;
   note: string;
 };
 
 const defaultIcon = '⚔️';
 
-const toCombatantInput = (state: FormState): AddCombatantInput => ({
-  name: state.name.trim(),
-  type: state.type,
-  initiative: Number.isFinite(state.initiative) ? state.initiative : 0,
-  maxHp: Math.max(1, Number.isFinite(state.maxHp) ? state.maxHp : 1),
-  ac: Number.isFinite(state.ac) ? state.ac : undefined,
-  icon: state.icon,
-  note: state.note.trim() || undefined
-});
+const toCombatantInput = (state: FormState): AddCombatantInput => {
+  const parsedInitiative = Number.parseInt(state.initiative, 10);
+  const parsedMaxHp = Number.parseInt(state.maxHp, 10);
+  const parsedAc = Number.parseInt(state.ac, 10);
 
-const toTemplateInput = (state: FormState): CombatantTemplateInput => ({
-  name: state.name.trim(),
-  type: state.type,
-  defaultInitiative: Number.isFinite(state.initiative) ? state.initiative : 0,
-  maxHp: Math.max(1, Number.isFinite(state.maxHp) ? state.maxHp : 1),
-  ac: Number.isFinite(state.ac) ? state.ac : null,
-  icon: state.icon,
-  note: state.note.trim() || undefined
-});
+  return {
+    name: state.name.trim(),
+    type: state.type,
+    initiative: Number.isFinite(parsedInitiative) ? parsedInitiative : 0,
+    maxHp: Math.max(1, Number.isFinite(parsedMaxHp) ? parsedMaxHp : 1),
+    ac: Number.isFinite(parsedAc) ? parsedAc : undefined,
+    icon: state.icon,
+    note: state.note.trim() || undefined
+  };
+};
+
+const toTemplateInput = (state: FormState): CombatantTemplateInput => {
+  const parsedInitiative = Number.parseInt(state.initiative, 10);
+  const parsedMaxHp = Number.parseInt(state.maxHp, 10);
+  const parsedAc = Number.parseInt(state.ac, 10);
+
+  return {
+    name: state.name.trim(),
+    type: state.type,
+    defaultInitiative: Number.isFinite(parsedInitiative) ? parsedInitiative : 0,
+    maxHp: Math.max(1, Number.isFinite(parsedMaxHp) ? parsedMaxHp : 1),
+    ac: Number.isFinite(parsedAc) ? parsedAc : null,
+    icon: state.icon,
+    note: state.note.trim() || undefined
+  };
+};
 
 const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormProps) => {
   const initialState: FormState = useMemo(
     () => ({
       name: '',
       type: 'player',
-      initiative: 10,
-      maxHp: 10,
-      ac: 10,
+      initiative: '',
+      maxHp: '',
+      ac: '',
       icon: iconOptions[0]?.icon ?? defaultIcon,
       note: ''
     }),
@@ -59,6 +71,8 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
   const [feedback, setFeedback] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const numericFieldsFilled =
+    formData.initiative.trim() !== '' && formData.maxHp.trim() !== '' && formData.ac.trim() !== '';
 
   const {
     templates,
@@ -80,6 +94,11 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!formData.name.trim()) return;
+    if (!numericFieldsFilled) {
+      setLocalError('Enter initiative, max HP, and AC before adding to the encounter.');
+      return;
+    }
+    setLocalError(null);
     onCreate(toCombatantInput(formData));
     setFormData(initialState);
     setEditingTemplateId(null);
@@ -107,9 +126,9 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
     setFormData({
       name: template.name,
       type: template.type,
-      initiative: template.defaultInitiative,
-      maxHp: template.maxHp,
-      ac: template.ac ?? 10,
+      initiative: String(template.defaultInitiative ?? ''),
+      maxHp: String(template.maxHp ?? ''),
+      ac: template.ac !== null && template.ac !== undefined ? String(template.ac) : '',
       icon: template.icon,
       note: template.note ?? ''
     });
@@ -132,6 +151,10 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
   const handleSaveTemplate = async () => {
     if (!formData.name.trim()) {
       setLocalError('Enter a name before saving to the library.');
+      return;
+    }
+    if (!numericFieldsFilled) {
+      setLocalError('Enter initiative, max HP, and AC before saving to the library.');
       return;
     }
     setLocalError(null);
@@ -249,6 +272,7 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
               onChange={(event) => {
                 setFormData((prev) => ({ ...prev, name: event.target.value }));
                 setFeedback(null);
+                setLocalError(null);
               }}
               placeholder="Name or descriptor"
               required
@@ -262,6 +286,7 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
               onChange={(event) => {
                 setFormData((prev) => ({ ...prev, type: event.target.value as AddCombatantInput['type'] }));
                 setFeedback(null);
+                setLocalError(null);
               }}
             >
               <option value="player">Player</option>
@@ -274,38 +299,55 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
             <label>
               Initiative
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="-?[0-9]*"
                 value={formData.initiative}
                 onChange={(event) => {
-                  setFormData((prev) => ({ ...prev, initiative: Number(event.target.value) }));
-                  setFeedback(null);
+                  const value = event.target.value;
+                  if (/^-?\d*$/.test(value)) {
+                    setFormData((prev) => ({ ...prev, initiative: value }));
+                    setFeedback(null);
+                    setLocalError(null);
+                  }
                 }}
-                min={-10}
-                max={50}
+                placeholder="0"
               />
             </label>
             <label>
               Max HP
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={formData.maxHp}
                 onChange={(event) => {
-                  setFormData((prev) => ({ ...prev, maxHp: Number(event.target.value) }));
-                  setFeedback(null);
+                  const value = event.target.value;
+                  if (/^\d*$/.test(value)) {
+                    setFormData((prev) => ({ ...prev, maxHp: value }));
+                    setFeedback(null);
+                    setLocalError(null);
+                  }
                 }}
-                min={1}
+                placeholder="0"
               />
             </label>
             <label>
               AC
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={formData.ac}
                 onChange={(event) => {
-                  setFormData((prev) => ({ ...prev, ac: Number(event.target.value) }));
-                  setFeedback(null);
+                  const value = event.target.value;
+                  if (/^\d*$/.test(value)) {
+                    setFormData((prev) => ({ ...prev, ac: value }));
+                    setFeedback(null);
+                    setLocalError(null);
+                  }
                 }}
-                min={0}
+                placeholder="0"
               />
             </label>
           </div>
@@ -317,6 +359,7 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
               onChange={(event) => {
                 setFormData((prev) => ({ ...prev, icon: event.target.value }));
                 setFeedback(null);
+                setLocalError(null);
               }}
             >
               {iconOptions.map((option) => (
@@ -334,6 +377,7 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
               onChange={(event) => {
                 setFormData((prev) => ({ ...prev, note: event.target.value }));
                 setFeedback(null);
+                setLocalError(null);
               }}
               rows={3}
               placeholder="Opening position, tactics, loot…"
@@ -344,10 +388,15 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
           {feedback && <p className="form-feedback">{feedback}</p>}
 
           <div className="form-actions">
-            <button type="submit" className="primary">
+            <button type="submit" className="primary" disabled={!numericFieldsFilled}>
               Add to Encounter
             </button>
-            <button type="button" className="ghost" onClick={() => void handleSaveTemplate()} disabled={isMutating}>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => void handleSaveTemplate()}
+              disabled={isMutating || !numericFieldsFilled}
+            >
               {isMutating ? 'Saving…' : editingTemplateId ? 'Update Template' : 'Save to Library'}
             </button>
           </div>

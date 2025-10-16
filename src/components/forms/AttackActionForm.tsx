@@ -35,12 +35,9 @@ const AttackActionForm = ({ combatants, defaultAttackerId, onSubmit, onCancel }:
   }, [combatants, defaultAttackerId]);
 
   const [attackerId, setAttackerId] = useState(fallbackAttackerId);
-  const [targetId, setTargetId] = useState<string>(() => {
-    const candidates = combatants.filter((combatant) => combatant.id !== fallbackAttackerId);
-    return candidates[0]?.id ?? '';
-  });
-  const [damageType, setDamageType] = useState(DAMAGE_TYPES[0] ?? 'Damage');
-  const [amount, setAmount] = useState('5');
+  const [targetId, setTargetId] = useState<string>('');
+  const [damageType, setDamageType] = useState('');
+  const [amount, setAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -55,7 +52,9 @@ const AttackActionForm = ({ combatants, defaultAttackerId, onSubmit, onCancel }:
     if (availableTargets.some((combatant) => combatant.id === targetId)) {
       return;
     }
-    setTargetId(availableTargets[0]?.id ?? '');
+    if (targetId !== '') {
+      setTargetId('');
+    }
   }, [attackerId, combatants, targetId]);
 
   useEffect(() => {
@@ -81,7 +80,11 @@ const AttackActionForm = ({ combatants, defaultAttackerId, onSubmit, onCancel }:
       setError('Choose a target.');
       return;
     }
-    const numericAmount = Number(amount);
+    if (!amount.trim()) {
+      setError('Enter a non-negative damage amount.');
+      return;
+    }
+    const numericAmount = Number.parseInt(amount, 10);
     if (!Number.isFinite(numericAmount) || numericAmount < 0) {
       setError('Enter a non-negative damage amount.');
       return;
@@ -97,7 +100,7 @@ const AttackActionForm = ({ combatants, defaultAttackerId, onSubmit, onCancel }:
 
   const datalistId = 'damage-type-options';
 
-  const canSubmit = attacker && target && combatants.length > 1;
+  const canSubmit = attacker && target && combatants.length > 1 && amount.trim() !== '';
 
   return (
     <div className="attack-action-modal">
@@ -124,15 +127,14 @@ const AttackActionForm = ({ combatants, defaultAttackerId, onSubmit, onCancel }:
         <label>
           Target
           <select value={targetId} onChange={(event) => setTargetId(event.target.value)} disabled={targetOptions.length === 0}>
-            {targetOptions.length === 0 ? (
-              <option value="">No valid targets</option>
-            ) : (
-              targetOptions.map((combatant) => (
-                <option key={combatant.id} value={combatant.id}>
-                  {combatant.name}
-                </option>
-              ))
-            )}
+            <option value="" disabled={targetOptions.length > 0}>
+              {targetOptions.length === 0 ? 'No valid targets' : 'Select target'}
+            </option>
+            {targetOptions.map((combatant) => (
+              <option key={combatant.id} value={combatant.id}>
+                {combatant.name}
+              </option>
+            ))}
           </select>
         </label>
         <label>
@@ -153,34 +155,39 @@ const AttackActionForm = ({ combatants, defaultAttackerId, onSubmit, onCancel }:
         <label>
           Damage Amount
           <input
-            type="number"
-            min={0}
-            step={1}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={amount}
-            onChange={(event) => setAmount(event.target.value)}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (/^\d*$/.test(value)) {
+                setAmount(value);
+              }
+            }}
             placeholder="0"
           />
         </label>
-        <div className="attack-summary">
-          <div>
-            <span className="attack-summary-label">Attacker</span>
-            <span className="attack-summary-value">
+        <dl className="attack-summary">
+          <div className="attack-summary-item">
+            <dt className="attack-summary-label">Attacker</dt>
+            <dd className="attack-summary-value">
               {attacker ? `${attacker.name} (${attacker.hp.current}/${attacker.hp.max} HP)` : '—'}
-            </span>
+            </dd>
           </div>
-          <div>
-            <span className="attack-summary-label">Target</span>
-            <span className="attack-summary-value">
+          <div className="attack-summary-item">
+            <dt className="attack-summary-label">Target</dt>
+            <dd className="attack-summary-value">
               {target ? `${target.name} (${target.hp.current}/${target.hp.max} HP)` : '—'}
-            </span>
+            </dd>
           </div>
-          <div>
-            <span className="attack-summary-label">Damage</span>
-            <span className="attack-summary-value">
-              {`${damageType.trim() || 'Damage'} · ${Math.max(0, Number(amount) || 0)} HP`}
-            </span>
+          <div className="attack-summary-item full">
+            <dt className="attack-summary-label">Damage</dt>
+            <dd className="attack-summary-value">
+              {`${damageType.trim() || 'Damage'} · ${Math.max(0, Number.parseInt(amount || '0', 10) || 0)} HP`}
+            </dd>
           </div>
-        </div>
+        </dl>
         {error ? <p className="form-warning">{error}</p> : null}
         <div className="form-actions">
           <button type="submit" className="primary" disabled={!canSubmit}>
