@@ -6,7 +6,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
 const isCombatantType = (value: unknown): value is CombatantTemplate['type'] =>
-  value === 'player' || value === 'ally' || value === 'enemy';
+  value === 'player' || value === 'ally' || value === 'enemy' || value === 'boss';
 
 const parseTemplate = (value: unknown): CombatantTemplate | null => {
   if (!isRecord(value)) return null;

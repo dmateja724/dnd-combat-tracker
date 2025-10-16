@@ -1053,6 +1053,18 @@ button {
   --overlay-text-shadow: 0 0 18px rgba(0, 0, 0, 0.85), 0 0 14px rgba(255, 196, 45, 0.6);
 }
 
+.death-overlay.boss-felled {
+  --overlay-bg-inner: rgba(255, 210, 105, 0.15);
+  --overlay-bg-outer: rgba(22, 13, 4, 0.52);
+  --overlay-band-color: rgba(7, 5, 2, 0.96);
+  --overlay-band-stop: 48%;
+  --overlay-band-glow: rgba(255, 210, 105, 0.5);
+  --overlay-text-color: #fff3c4;
+  --overlay-letter-spacing: 0.06em;
+  --overlay-font-size: clamp(12px, 2.8vw, 20px);
+  --overlay-text-shadow: 0 0 18px rgba(0, 0, 0, 0.85), 0 0 16px rgba(255, 210, 105, 0.6);
+}
+
 .death-overlay-text {
   color: var(--overlay-text-color);
   font-family: 'Unbounded', 'Inter', sans-serif;
@@ -1063,6 +1075,11 @@ button {
   white-space: nowrap;
   position: relative;
   z-index: 1;
+}
+
+.death-overlay-text.boss-felled {
+  text-transform: none;
+  letter-spacing: 0.05em;
 }
 
 @keyframes deathOverlayFade {
@@ -1182,6 +1199,11 @@ button {
 
 .tag-enemy {
   border: 1px solid rgba(214, 40, 40, 0.4);
+}
+
+.tag-boss {
+  border: 1px solid rgba(193, 18, 31, 0.55);
+  box-shadow: 0 0 12px rgba(193, 18, 31, 0.15) inset;
 }
 
 .combatant-card button {

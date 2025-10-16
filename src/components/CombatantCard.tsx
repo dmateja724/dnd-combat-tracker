@@ -27,7 +27,8 @@ const quickHealValues = [1, 5, 10];
 const typeToLabel: Record<Combatant['type'], string> = {
   player: 'Adventurer',
   ally: 'Ally',
-  enemy: 'Enemy'
+  enemy: 'Enemy',
+  boss: 'Boss'
 };
 
 const CombatantCard = ({
@@ -106,10 +107,23 @@ const CombatantCard = ({
   const canRecordRoll = deathSaveStatus === 'pending';
   const isPlayerOrAlly = combatant.type === 'player' || combatant.type === 'ally';
   const isEnemy = combatant.type === 'enemy';
+  const isBoss = combatant.type === 'boss';
+  const isVillain = isEnemy || isBoss;
   const youDiedOverlayActive = isPlayerOrAlly && deathSaveStatus === 'dead';
-  const enemyFelledOverlayActive = isEnemy && isDefeated;
-  const overlayVariant = youDiedOverlayActive ? 'you-died' : enemyFelledOverlayActive ? 'enemy-felled' : null;
-  const overlayText = overlayVariant === 'enemy-felled' ? 'ENEMY FELLED' : 'YOU DIED';
+  const villainFelledOverlayActive = isVillain && isDefeated;
+  const overlayVariant = youDiedOverlayActive
+    ? 'you-died'
+    : villainFelledOverlayActive
+    ? isBoss
+      ? 'boss-felled'
+      : 'enemy-felled'
+    : null;
+  const overlayText =
+    overlayVariant === 'enemy-felled'
+      ? 'ENEMY FELLED'
+      : overlayVariant === 'boss-felled'
+      ? 'Great Enemy Felled'
+      : 'YOU DIED';
 
   const handleSuccessChipClick = (index: number) => {
     if (!deathSaves || deathSavesLocked) return;

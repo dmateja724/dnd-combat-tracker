@@ -1,4 +1,4 @@
-export type CombatantType = 'player' | 'enemy' | 'ally';
+export type CombatantType = 'player' | 'enemy' | 'ally' | 'boss';
 
 export interface StatusEffectTemplate {
   id: string;

@@ -292,6 +292,7 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
               <option value="player">Player</option>
               <option value="ally">Ally</option>
               <option value="enemy">Enemy</option>
+              <option value="boss">Boss</option>
             </select>
           </label>
 

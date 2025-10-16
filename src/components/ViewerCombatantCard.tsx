@@ -4,7 +4,8 @@ import { Combatant } from '../types';
 const typeToLabel: Record<Combatant['type'], string> = {
   player: 'Adventurer',
   ally: 'Ally',
-  enemy: 'Enemy'
+  enemy: 'Enemy',
+  boss: 'Boss'
 };
 
 interface ViewerCombatantCardProps {
@@ -16,17 +17,30 @@ const ViewerCombatantCard = ({ combatant, isActive }: ViewerCombatantCardProps) 
   const deathSaves = combatant.deathSaves ?? null;
   const deathSaveStatus = deathSaves?.status ?? null;
   const isDeathSavesActive = !!deathSaves;
-  const showHealthValues = combatant.type !== 'enemy';
   const showHpSection = !isDeathSavesActive;
   const healthPercent = combatant.hp.max === 0 ? 0 : Math.round((combatant.hp.current / combatant.hp.max) * 100);
   const hpWidth = Math.max(0, Math.min(healthPercent, 100)) + '%';
   const isDefeated = combatant.hp.current <= 0;
   const isPlayerOrAlly = combatant.type === 'player' || combatant.type === 'ally';
   const isEnemy = combatant.type === 'enemy';
+  const isBoss = combatant.type === 'boss';
+  const isVillain = isEnemy || isBoss;
+  const showHealthValues = !isVillain;
   const youDiedOverlayActive = isPlayerOrAlly && deathSaveStatus === 'dead';
-  const enemyFelledOverlayActive = isEnemy && isDefeated;
-  const overlayVariant = youDiedOverlayActive ? 'you-died' : enemyFelledOverlayActive ? 'enemy-felled' : null;
-  const overlayText = overlayVariant === 'enemy-felled' ? 'ENEMY FELLED' : 'YOU DIED';
+  const villainFelledOverlayActive = isVillain && isDefeated;
+  const overlayVariant = youDiedOverlayActive
+    ? 'you-died'
+    : villainFelledOverlayActive
+    ? isBoss
+      ? 'boss-felled'
+      : 'enemy-felled'
+    : null;
+  const overlayText =
+    overlayVariant === 'enemy-felled'
+      ? 'ENEMY FELLED'
+      : overlayVariant === 'boss-felled'
+      ? 'Great Enemy Felled'
+      : 'YOU DIED';
 
   return (
     <article

@@ -70,7 +70,7 @@ const toTemplateInput = (template: unknown): CombatantTemplateInput | null => {
   const name = typeof record.name === 'string' ? record.name.trim() : '';
   const type = record.type;
   if (!name) return null;
-  if (type !== 'player' && type !== 'ally' && type !== 'enemy') return null;
+  if (type !== 'player' && type !== 'ally' && type !== 'enemy' && type !== 'boss') return null;
 
   const initiativeValue = Number(record.defaultInitiative);
   const maxHpValue = Number(record.maxHp);
