@@ -15,6 +15,16 @@ export interface StatusEffectInstance extends StatusEffectTemplate {
   level?: number;
 }
 
+export type DeathSaveStatus = 'pending' | 'stable' | 'dead';
+
+export interface DeathSaveState {
+  status: DeathSaveStatus;
+  successes: number;
+  failures: number;
+  startedAtRound: number;
+  lastRollRound: number | null;
+}
+
 export interface Combatant {
   id: string;
   name: string;
@@ -29,6 +39,7 @@ export interface Combatant {
   statuses: StatusEffectInstance[];
   note?: string;
   isHidden?: boolean;
+  deathSaves?: DeathSaveState | null;
 }
 
 export interface CombatantTemplate {

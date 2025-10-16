@@ -5,6 +5,7 @@ import {
   CombatantType,
   CombatLogEntry,
   CombatLogEventType,
+  DeathSaveState,
   EncounterState,
   StatusEffectInstance,
   StatusEffectTemplate
@@ -30,6 +31,7 @@ export interface UpdateCombatantInput {
   ac?: number;
   icon?: string;
   note?: string;
+  deathSaves?: DeathSaveState | null;
 }
 
 export interface AttackActionInput {
@@ -58,6 +60,11 @@ type TrackerAction =
   | { type: 'add-status'; payload: { id: string; status: StatusEffectInstance } }
   | { type: 'remove-status'; payload: { id: string; statusId: string } }
   | { type: 'clear-log' }
+  | { type: 'start-death-saves'; payload: { id: string; round: number } }
+  | { type: 'mark-dead'; payload: { id: string; round: number } }
+  | { type: 'record-death-save'; payload: { id: string; result: 'success' | 'failure'; round: number } }
+  | { type: 'set-death-save-counts'; payload: { id: string; successes: number; failures: number } }
+  | { type: 'clear-death-saves'; payload: { id: string } }
   | { type: 'hydrate'; payload: EncounterState };
 
 type TrackerState = EncounterState;
@@ -117,12 +124,63 @@ const decrementStatusDurations = (combatants: Combatant[]) =>
       .filter((status) => status.remainingRounds === null || status.remainingRounds > 0)
   }));
 
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const createDeathSaveState = (round: number): DeathSaveState => ({
+  status: 'pending',
+  successes: 0,
+  failures: 0,
+  startedAtRound: round,
+  lastRollRound: null
+});
+
+const sanitizeDeathSaves = (value: DeathSaveState | null | undefined): DeathSaveState | null => {
+  if (!value) {
+    return null;
+  }
+  const status = value.status === 'stable' || value.status === 'dead' ? value.status : 'pending';
+  const successes = clamp(Math.round(value.successes ?? 0), 0, 3);
+  const failures = clamp(Math.round(value.failures ?? 0), 0, 3);
+  const startedAtRound = clamp(Math.round(value.startedAtRound ?? 1), 1, Number.MAX_SAFE_INTEGER);
+  const lastRollRound =
+    typeof value.lastRollRound === 'number' && Number.isFinite(value.lastRollRound)
+      ? clamp(Math.round(value.lastRollRound), 1, Number.MAX_SAFE_INTEGER)
+      : null;
+  let normalizedStatus = status;
+  if (normalizedStatus === 'pending') {
+    if (successes >= 3) {
+      normalizedStatus = 'stable';
+    } else if (failures >= 3) {
+      normalizedStatus = 'dead';
+    }
+  }
+  return {
+    status: normalizedStatus,
+    successes,
+    failures,
+    startedAtRound,
+    lastRollRound
+  };
+};
+
+const resolveDeathSavesAfterHpChange = (
+  combatant: Combatant,
+  nextHp: number,
+  override: DeathSaveState | null | undefined
+): DeathSaveState | null => {
+  if (override !== undefined) {
+    return sanitizeDeathSaves(override);
+  }
+  return nextHp > 0 ? null : combatant.deathSaves ?? null;
+};
+
 const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerState => {
   switch (action.type) {
     case 'hydrate': {
       const sanitized = action.payload.combatants.map((combatant) => ({
         ...combatant,
-        statuses: combatant.statuses ?? []
+        statuses: combatant.statuses ?? [],
+        deathSaves: sanitizeDeathSaves(combatant.deathSaves)
       }));
       const hydrated = {
         ...action.payload,
@@ -169,23 +227,29 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
     case 'update-combatant': {
       let logEntry: CombatLogEntry | null = null;
       const combatants = sortCombatants(
-        state.combatants.map((combatant) =>
-          combatant.id === action.payload.id
-            ? {
-                ...combatant,
-                ...action.payload.changes,
-                hp: {
-                  ...combatant.hp,
-                  ...action.payload.changes.hp,
-                  current: Math.min(
-                    combatant.hp.max,
-                    Math.max(0, action.payload.changes.hp?.current ?? combatant.hp.current)
-                  ),
-                  max: action.payload.changes.hp?.max ?? combatant.hp.max
-                }
-              }
-            : combatant
-        )
+        state.combatants.map((combatant) => {
+          if (combatant.id !== action.payload.id) {
+            return combatant;
+          }
+          const changes = action.payload.changes;
+          const nextMax = clamp(changes.hp?.max ?? combatant.hp.max, 0, Number.MAX_SAFE_INTEGER);
+          const hasExplicitCurrent =
+            changes.hp && Object.prototype.hasOwnProperty.call(changes.hp, 'current');
+          const requestedCurrent = hasExplicitCurrent
+            ? changes.hp?.current ?? combatant.hp.current
+            : combatant.hp.current;
+          const nextCurrent = clamp(requestedCurrent ?? combatant.hp.current, 0, nextMax);
+          const nextDeathSaves = resolveDeathSavesAfterHpChange(combatant, nextCurrent, changes.deathSaves);
+          return {
+            ...combatant,
+            ...changes,
+            hp: {
+              current: nextCurrent,
+              max: nextMax
+            },
+            deathSaves: nextDeathSaves
+          };
+        })
       );
       const targetBefore = state.combatants.find((combatant) => combatant.id === action.payload.id);
       const targetAfter = combatants.find((combatant) => combatant.id === action.payload.id);
@@ -277,7 +341,8 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
           hp: {
             ...combatant.hp,
             current: next
-          }
+          },
+          deathSaves: resolveDeathSavesAfterHpChange(combatant, next, undefined)
         };
       });
       return {
@@ -304,7 +369,8 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
                     hp: {
                       ...combatant.hp,
                       current: nextHp
-                    }
+                    },
+                    deathSaves: resolveDeathSavesAfterHpChange(combatant, nextHp, undefined)
                   }
                 : combatant
             )
@@ -347,7 +413,8 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
                     hp: {
                       ...combatant.hp,
                       current: nextHp
-                    }
+                    },
+                    deathSaves: resolveDeathSavesAfterHpChange(combatant, nextHp, undefined)
                   }
                 : combatant
             )
@@ -511,6 +578,183 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
         log: appendLog(state.log, entry)
       };
     }
+    case 'start-death-saves': {
+      let startedCombatant: Combatant | null = null;
+      const combatants = state.combatants.map((combatant) => {
+        if (combatant.id !== action.payload.id) {
+          return combatant;
+        }
+        if (combatant.deathSaves?.status === 'pending' || combatant.deathSaves?.status === 'dead') {
+          return combatant;
+        }
+        startedCombatant = combatant;
+        return {
+          ...combatant,
+          deathSaves: createDeathSaveState(action.payload.round)
+        };
+      });
+      const entry =
+        startedCombatant !== null
+          ? createLogEntry(
+              'info',
+              `${startedCombatant.name} is making death saving throws.`,
+              state.round,
+              { combatantId: startedCombatant.id }
+            )
+          : null;
+      return {
+        ...state,
+        combatants,
+        log: appendLog(state.log, entry)
+      };
+    }
+    case 'mark-dead': {
+      let markedCombatant: Combatant | null = null;
+      const combatants = state.combatants.map((combatant) => {
+        if (combatant.id !== action.payload.id) {
+          return combatant;
+        }
+        if (combatant.deathSaves?.status === 'dead') {
+          return combatant;
+        }
+        markedCombatant = combatant;
+        const startedAtRound = combatant.deathSaves?.startedAtRound ?? action.payload.round;
+        return {
+          ...combatant,
+          deathSaves: {
+            status: 'dead',
+            successes: 0,
+            failures: 3,
+            startedAtRound,
+            lastRollRound: action.payload.round
+          }
+        };
+      });
+      const entry =
+        markedCombatant !== null
+          ? createLogEntry('info', `${markedCombatant.name} has died.`, state.round, {
+              combatantId: markedCombatant.id
+            })
+          : null;
+      return {
+        ...state,
+        combatants,
+        log: appendLog(state.log, entry)
+      };
+    }
+    case 'record-death-save': {
+      let logEntry: CombatLogEntry | null = null;
+      const combatants = state.combatants.map((combatant) => {
+        if (combatant.id !== action.payload.id) {
+          return combatant;
+        }
+        const current = combatant.deathSaves;
+        if (!current || current.status === 'dead' || current.status === 'stable') {
+          return combatant;
+        }
+        let successes = current.successes;
+        let failures = current.failures;
+        if (action.payload.result === 'success') {
+          successes = clamp(successes + 1, 0, 3);
+        } else {
+          failures = clamp(failures + 1, 0, 3);
+        }
+        let status = current.status;
+        if (failures >= 3) {
+          status = 'dead';
+        } else if (successes >= 3) {
+          status = 'stable';
+        } else {
+          status = 'pending';
+        }
+        const updated: DeathSaveState = {
+          status,
+          successes,
+          failures,
+          startedAtRound: current.startedAtRound,
+          lastRollRound: action.payload.round
+        };
+        if (status === 'dead' && current.status !== 'dead') {
+          logEntry = createLogEntry(
+            'info',
+            `${combatant.name} succumbed to their wounds.`,
+            state.round,
+            { combatantId: combatant.id }
+          );
+        } else if (status === 'stable' && current.status !== 'stable') {
+          logEntry = createLogEntry(
+            'info',
+            `${combatant.name} stabilized at 0 HP.`,
+            state.round,
+            { combatantId: combatant.id }
+          );
+        } else {
+          const message =
+            action.payload.result === 'success'
+              ? `${combatant.name} succeeded on a death saving throw (${successes}/3).`
+              : `${combatant.name} failed a death saving throw (${failures}/3).`;
+          logEntry = createLogEntry('info', message, state.round, { combatantId: combatant.id });
+        }
+        return {
+          ...combatant,
+          deathSaves: updated
+        };
+      });
+      return {
+        ...state,
+        combatants,
+        log: appendLog(state.log, logEntry)
+      };
+    }
+    case 'set-death-save-counts': {
+      const combatants = state.combatants.map((combatant) => {
+        if (combatant.id !== action.payload.id) {
+          return combatant;
+        }
+        const successes = clamp(Math.round(action.payload.successes), 0, 3);
+        const failures = clamp(Math.round(action.payload.failures), 0, 3);
+        let status: DeathSaveState['status'] = combatant.deathSaves?.status ?? 'pending';
+        if (failures >= 3) {
+          status = 'dead';
+        } else if (successes >= 3) {
+          status = 'stable';
+        } else if (status === 'dead') {
+          status = 'pending';
+        } else {
+          status = 'pending';
+        }
+        const startedAtRound = combatant.deathSaves?.startedAtRound ?? state.round;
+        const lastRollRound = successes === 0 && failures === 0 ? null : combatant.deathSaves?.lastRollRound ?? null;
+        return {
+          ...combatant,
+          deathSaves: {
+            status,
+            successes,
+            failures,
+            startedAtRound,
+            lastRollRound
+          }
+        };
+      });
+      return {
+        ...state,
+        combatants
+      };
+    }
+    case 'clear-death-saves': {
+      const combatants = state.combatants.map((combatant) =>
+        combatant.id === action.payload.id
+          ? {
+              ...combatant,
+              deathSaves: null
+            }
+          : combatant
+      );
+      return {
+        ...state,
+        combatants
+      };
+    }
     case 'clear-log':
       if (state.log.length === 0) {
         return state;
@@ -666,7 +910,8 @@ export const useCombatTracker = (encounterId: string | null) => {
       ac: input.ac,
       icon: input.icon ?? fallbackIcons[Math.floor(Math.random() * fallbackIcons.length)],
       statuses: [],
-      note: input.note
+      note: input.note,
+      deathSaves: null
     };
     dispatch({ type: 'add-combatant', payload: combatant });
   }, []);
@@ -689,6 +934,26 @@ export const useCombatTracker = (encounterId: string | null) => {
 
   const recordHeal = useCallback((input: HealActionInput) => {
     dispatch({ type: 'heal', payload: input });
+  }, []);
+
+  const startDeathSaves = useCallback((id: string, round: number) => {
+    dispatch({ type: 'start-death-saves', payload: { id, round } });
+  }, []);
+
+  const markCombatantDead = useCallback((id: string, round: number) => {
+    dispatch({ type: 'mark-dead', payload: { id, round } });
+  }, []);
+
+  const recordDeathSaveResult = useCallback((id: string, result: 'success' | 'failure', round: number) => {
+    dispatch({ type: 'record-death-save', payload: { id, result, round } });
+  }, []);
+
+  const setDeathSaveCounts = useCallback((id: string, successes: number, failures: number) => {
+    dispatch({ type: 'set-death-save-counts', payload: { id, successes, failures } });
+  }, []);
+
+  const clearDeathSaves = useCallback((id: string) => {
+    dispatch({ type: 'clear-death-saves', payload: { id } });
   }, []);
 
   const setActiveCombatant = useCallback((id: string) => {
@@ -760,6 +1025,11 @@ export const useCombatTracker = (encounterId: string | null) => {
       applyDelta,
       recordAttack,
       recordHeal,
+      startDeathSaves,
+      markCombatantDead,
+      recordDeathSaveResult,
+      setDeathSaveCounts,
+      clearDeathSaves,
       setActiveCombatant,
       advanceTurn,
       rewindTurn,

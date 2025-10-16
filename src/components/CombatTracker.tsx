@@ -7,7 +7,7 @@ import AddCombatantForm from './forms/AddCombatantForm';
 import AttackActionForm from './forms/AttackActionForm';
 import HealActionForm from './forms/HealActionForm';
 import Modal from './Modal';
-import type { StatusEffectTemplate } from '../types';
+import type { Combatant, StatusEffectTemplate } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useEncounterContext } from '../context/EncounterContext';
 import EncounterManager from './EncounterManager';
@@ -38,11 +38,16 @@ const CombatTracker = () => {
   const [isExportingAccount, setIsExportingAccount] = useState(false);
   const [isImportingAccount, setIsImportingAccount] = useState(false);
   const accountImportInputRef = useRef<HTMLInputElement | null>(null);
+  const [deathSaveDecisionQueue, setDeathSaveDecisionQueue] = useState<string[]>([]);
+  const previousHpRef = useRef<Map<string, number>>(new Map());
 
   const handleAddStatus = (combatantId: string, template: StatusEffectTemplate, rounds: number | null, note?: string) => {
     actions.addStatus(combatantId, template, rounds, note);
   };
 
+  const activeDeathDecisionId = deathSaveDecisionQueue[0] ?? null;
+  const activeDeathDecisionCombatant =
+    activeDeathDecisionId ? state.combatants.find((candidate) => candidate.id === activeDeathDecisionId) ?? null : null;
   useEffect(() => {
     setIsSelectionModalOpen(!selectedEncounterId);
   }, [selectedEncounterId]);
@@ -93,6 +98,37 @@ const CombatTracker = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const needsDecision = (combatant: Combatant) =>
+      (combatant.type === 'player' || combatant.type === 'ally') &&
+      combatant.hp.current <= 0 &&
+      !combatant.deathSaves;
+
+    const prevHpMap = previousHpRef.current;
+    const nextHpMap = new Map<string, number>();
+    const additions: string[] = [];
+
+    state.combatants.forEach((combatant) => {
+      nextHpMap.set(combatant.id, combatant.hp.current);
+      const previousValue = prevHpMap.get(combatant.id);
+      if (needsDecision(combatant) && (previousValue === undefined || previousValue > 0)) {
+        additions.push(combatant.id);
+      }
+    });
+
+    previousHpRef.current = nextHpMap;
+
+    setDeathSaveDecisionQueue((queue) => {
+      const filtered = queue.filter((id) => {
+        const combatant = state.combatants.find((candidate) => candidate.id === id);
+        return combatant ? needsDecision(combatant) : false;
+      });
+      const existing = new Set(filtered);
+      additions.forEach((id) => existing.add(id));
+      return Array.from(existing);
+    });
+  }, [state.combatants]);
+
   const handleResetEncounter = () => {
     if (!selectedEncounterId) return;
     if (typeof window !== 'undefined') {
@@ -113,6 +149,20 @@ const CombatTracker = () => {
   const handleOpenEncounterSelector = () => {
     setIsAccountMenuOpen(false);
     setIsSelectionModalOpen(true);
+  };
+
+  const handleMarkUnconscious = (combatantId: string) => {
+    actions.startDeathSaves(combatantId, state.round);
+    setDeathSaveDecisionQueue((queue) => queue.filter((id) => id !== combatantId));
+  };
+
+  const handleMarkDead = (combatantId: string) => {
+    actions.markCombatantDead(combatantId, state.round);
+    setDeathSaveDecisionQueue((queue) => queue.filter((id) => id !== combatantId));
+  };
+
+  const handleRecordDeathSave = (combatantId: string, result: 'success' | 'failure') => {
+    actions.recordDeathSaveResult(combatantId, result, state.round);
   };
 
   const rollDie = (sides: number) => {
@@ -475,6 +525,11 @@ const CombatTracker = () => {
                         onUpdate={(changes) => actions.updateCombatant(combatant.id, changes)}
                         onAddStatus={(template, rounds, note) => handleAddStatus(combatant.id, template, rounds, note)}
                         onRemoveStatus={(statusId) => actions.removeStatus(combatant.id, statusId)}
+                        onSetDeathSaveCounts={(successes, failures) =>
+                          actions.setDeathSaveCounts(combatant.id, successes, failures)
+                        }
+                        onClearDeathSaves={() => actions.clearDeathSaves(combatant.id)}
+                        onRecordDeathSave={(result) => handleRecordDeathSave(combatant.id, result)}
                         statusPresets={presets.statuses}
                       />
                     </div>
@@ -485,6 +540,37 @@ const CombatTracker = () => {
           )}
         </section>
       </div>
+      <Modal
+        isOpen={Boolean(activeDeathDecisionCombatant)}
+        onClose={() => {}}
+        ariaLabel="Death state prompt"
+      >
+        {activeDeathDecisionCombatant ? (
+          <div className="death-prompt">
+            <h3>{activeDeathDecisionCombatant.name} is at 0 HP</h3>
+            <p>
+              Choose <strong>Unconscious</strong> to begin tracking death saves automatically, or
+              mark them as dead if there is no chance of recovery.
+            </p>
+            <div className="death-prompt-actions">
+              <button
+                type="button"
+                className="primary"
+                onClick={() => handleMarkUnconscious(activeDeathDecisionCombatant.id)}
+              >
+                Unconscious
+              </button>
+              <button
+                type="button"
+                className="ghost danger"
+                onClick={() => handleMarkDead(activeDeathDecisionCombatant.id)}
+              >
+                Dead
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
       <Modal
         isOpen={isAttackModalOpen}
         onClose={() => setIsAttackModalOpen(false)}

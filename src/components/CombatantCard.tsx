@@ -16,6 +16,9 @@ interface CombatantCardProps {
   onUpdate: (changes: UpdateCombatantInput) => void;
   onAddStatus: (template: StatusEffectTemplate, remaining: number | null, note?: string) => void;
   onRemoveStatus: (statusId: string) => void;
+  onSetDeathSaveCounts: (successes: number, failures: number) => void;
+  onClearDeathSaves: () => void;
+  onRecordDeathSave: (result: 'success' | 'failure') => void;
 }
 
 const quickDamageValues = [1, 5, 10];
@@ -37,7 +40,10 @@ const CombatantCard = ({
   onRemove,
   onUpdate,
   onAddStatus,
-  onRemoveStatus
+  onRemoveStatus,
+  onSetDeathSaveCounts,
+  onClearDeathSaves,
+  onRecordDeathSave
 }: CombatantCardProps) => {
   const [customValue, setCustomValue] = useState('');
   const [noteDraft, setNoteDraft] = useState(combatant.note ?? '');
@@ -91,6 +97,32 @@ const CombatantCard = ({
 
   const isDefeated = combatant.hp.current <= 0;
   const isCustomValueEmpty = customValue.trim() === '';
+  const deathSaves = combatant.deathSaves ?? null;
+  const deathSaveStatus = deathSaves?.status ?? null;
+  const deathSaveSuccesses = deathSaves?.successes ?? 0;
+  const deathSaveFailures = deathSaves?.failures ?? 0;
+  const hasDeathSaves = deathSaves !== null;
+  const deathSavesLocked = !deathSaves || deathSaves.status === 'dead';
+  const canRecordRoll = deathSaveStatus === 'pending';
+
+  const handleSuccessChipClick = (index: number) => {
+    if (!deathSaves || deathSavesLocked) return;
+    const desired = index + 1;
+    const nextSuccesses = deathSaveSuccesses === desired ? desired - 1 : desired;
+    onSetDeathSaveCounts(nextSuccesses, deathSaveFailures);
+  };
+
+  const handleFailureChipClick = (index: number) => {
+    if (!deathSaves || deathSaveStatus === 'dead') return;
+    const desired = index + 1;
+    const nextFailures = deathSaveFailures === desired ? desired - 1 : desired;
+    onSetDeathSaveCounts(deathSaveSuccesses, nextFailures);
+  };
+
+  const handleResetDeathSaves = () => {
+    if (!deathSaves) return;
+    onSetDeathSaveCounts(0, 0);
+  };
 
   const handleNoteSubmit = () => {
     onUpdate({ note: noteDraft });
@@ -216,70 +248,168 @@ const CombatantCard = ({
       </section>
 
       <section className="controls">
-        <div className="quick-row">
-          <span>Damage</span>
-          <div>
-            {quickDamageValues.map((value) => (
-              <button key={'dmg-' + value} type="button" onClick={() => onDamage(value)}>
-                -{value}
+        {hasDeathSaves ? (
+          <div className="death-saves-panel">
+            <div className="death-saves-head">
+              <h4>Death Saves</h4>
+              {deathSaveStatus === 'stable' ? (
+                <span className="death-saves-pill stable">Stable</span>
+              ) : deathSaveStatus === 'dead' ? (
+                <span className="death-saves-pill dead">Dead</span>
+              ) : null}
+            </div>
+            <div className="death-saves-body">
+              <div className="death-saves-tracks">
+                <div className="death-saves-track">
+                  <span className="death-saves-label">Successes</span>
+                  <div className="death-saves-chips" role="group" aria-label="Death save successes">
+                    {[0, 1, 2].map((slot) => {
+                      const filled = slot < deathSaveSuccesses;
+                      return (
+                        <button
+                          key={'success-' + slot}
+                          type="button"
+                          className={clsx('death-save-chip', 'success', { filled })}
+                          onClick={() => handleSuccessChipClick(slot)}
+                          disabled={deathSavesLocked}
+                          aria-pressed={filled}
+                          aria-label={`Toggle success ${slot + 1}`}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="death-saves-track">
+                  <span className="death-saves-label">Failures</span>
+                  <div className="death-saves-chips" role="group" aria-label="Death save failures">
+                    {[0, 1, 2].map((slot) => {
+                      const filled = slot < deathSaveFailures;
+                      return (
+                        <button
+                          key={'failure-' + slot}
+                          type="button"
+                          className={clsx('death-save-chip', 'failure', { filled })}
+                          onClick={() => handleFailureChipClick(slot)}
+                          disabled={!deathSaves || deathSaveStatus === 'dead'}
+                          aria-pressed={filled}
+                          aria-label={`Toggle failure ${slot + 1}`}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+              <div className="death-saves-roll">
+                <span className="death-saves-label">Record Roll</span>
+                <div className="death-saves-roll-buttons">
+                  <button
+                    type="button"
+                    className="success"
+                    onClick={() => onRecordDeathSave('success')}
+                    disabled={!canRecordRoll}
+                  >
+                    Success
+                  </button>
+                  <button
+                    type="button"
+                    className="danger-button"
+                    onClick={() => onRecordDeathSave('failure')}
+                    disabled={!canRecordRoll}
+                  >
+                    Failure
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p className="death-saves-summary">
+              {deathSaveStatus === 'pending'
+                ? 'Roll each round until 3 successes or failures.'
+                : deathSaveStatus === 'stable'
+                ? 'This combatant is stable at 0 HP.'
+                : 'This combatant has died.'}
+            </p>
+            <div className="death-saves-actions">
+              <button
+                type="button"
+                className="ghost"
+                onClick={handleResetDeathSaves}
+                disabled={!deathSaves || (deathSaveSuccesses === 0 && deathSaveFailures === 0)}
+              >
+                Reset Counters
               </button>
-            ))}
-          </div>
-        </div>
-        <div className="quick-row">
-          <span>Heal</span>
-          <div>
-            {quickHealValues.map((value) => (
-              <button key={'heal-' + value} type="button" onClick={() => onHeal(value)}>
-                +{value}
+              <button type="button" className="ghost" onClick={onClearDeathSaves}>
+                Exit Death Saves
               </button>
-            ))}
+            </div>
           </div>
-        </div>
-        <form
-          className="custom-row"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (isCustomValueEmpty) return;
-            const amount = Math.max(0, Number.parseInt(customValue, 10) || 0);
-            if (amount === 0) return;
-            onDamage(amount);
-            setCustomValue('');
-          }}
-        >
-          <label htmlFor={'custom-amount-' + combatant.id}>Custom</label>
-          <input
-            id={'custom-amount-' + combatant.id}
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            value={customValue}
-            onChange={(event) => {
-              const value = event.target.value;
-              if (/^\d*$/.test(value)) {
-                setCustomValue(value);
-              }
-            }}
-            placeholder="0"
-          />
-          <button type="submit" className="primary" disabled={isCustomValueEmpty}>
-            Apply Damage
-          </button>
-          <button
-            type="button"
-            className="success"
-            disabled={isCustomValueEmpty}
-            onClick={() => {
-              if (isCustomValueEmpty) return;
-              const amount = Math.max(0, Number.parseInt(customValue, 10) || 0);
-              if (amount === 0) return;
-              onHeal(amount);
-              setCustomValue('');
-            }}
-          >
-            Apply Heal
-          </button>
-        </form>
+        ) : (
+          <>
+            <div className="quick-row">
+              <span>Damage</span>
+              <div>
+                {quickDamageValues.map((value) => (
+                  <button key={'dmg-' + value} type="button" onClick={() => onDamage(value)}>
+                    -{value}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="quick-row">
+              <span>Heal</span>
+              <div>
+                {quickHealValues.map((value) => (
+                  <button key={'heal-' + value} type="button" onClick={() => onHeal(value)}>
+                    +{value}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <form
+              className="custom-row"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (isCustomValueEmpty) return;
+                const amount = Math.max(0, Number.parseInt(customValue, 10) || 0);
+                if (amount === 0) return;
+                onDamage(amount);
+                setCustomValue('');
+              }}
+            >
+              <label htmlFor={'custom-amount-' + combatant.id}>Custom</label>
+              <input
+                id={'custom-amount-' + combatant.id}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={customValue}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (/^\d*$/.test(value)) {
+                    setCustomValue(value);
+                  }
+                }}
+                placeholder="0"
+              />
+              <button type="submit" className="primary" disabled={isCustomValueEmpty}>
+                Apply Damage
+              </button>
+              <button
+                type="button"
+                className="success"
+                disabled={isCustomValueEmpty}
+                onClick={() => {
+                  if (isCustomValueEmpty) return;
+                  const amount = Math.max(0, Number.parseInt(customValue, 10) || 0);
+                  if (amount === 0) return;
+                  onHeal(amount);
+                  setCustomValue('');
+                }}
+              >
+                Apply Heal
+              </button>
+            </form>
+          </>
+        )}
       </section>
 
       <div className="card-bottom">
