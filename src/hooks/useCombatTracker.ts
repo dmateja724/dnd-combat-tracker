@@ -585,72 +585,65 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
       };
     }
     case 'start-death-saves': {
-      let startedCombatant: Combatant | null = null;
-      const combatants = state.combatants.map((combatant) => {
+      let logEntry: CombatLogEntry | null = null;
+      const combatants = state.combatants.map<Combatant>((combatant) => {
         if (combatant.id !== action.payload.id) {
           return combatant;
         }
         if (combatant.deathSaves?.status === 'pending' || combatant.deathSaves?.status === 'dead') {
           return combatant;
         }
-        startedCombatant = combatant;
+        logEntry = createLogEntry(
+          'info',
+          `${combatant.name} is making death saving throws.`,
+          state.round,
+          { combatantId: combatant.id }
+        );
         return {
           ...combatant,
           deathSaves: createDeathSaveState(action.payload.round)
         };
       });
-      const entry =
-        startedCombatant !== null
-          ? createLogEntry(
-              'info',
-              `${startedCombatant.name} is making death saving throws.`,
-              state.round,
-              { combatantId: startedCombatant.id }
-            )
-          : null;
       return {
         ...state,
         combatants,
-        log: appendLog(state.log, entry)
+        log: appendLog(state.log, logEntry)
       };
     }
     case 'mark-dead': {
-      let markedCombatant: Combatant | null = null;
-      const combatants = state.combatants.map((combatant) => {
+      let logEntry: CombatLogEntry | null = null;
+      const combatants = state.combatants.map<Combatant>((combatant) => {
         if (combatant.id !== action.payload.id) {
           return combatant;
         }
         if (combatant.deathSaves?.status === 'dead') {
           return combatant;
         }
-        markedCombatant = combatant;
         const startedAtRound = combatant.deathSaves?.startedAtRound ?? action.payload.round;
+        const updatedDeathSaves: DeathSaveState = {
+          status: 'dead',
+          successes: 0,
+          failures: 3,
+          startedAtRound,
+          lastRollRound: action.payload.round
+        };
+        logEntry = createLogEntry('info', `${combatant.name} has died.`, state.round, {
+          combatantId: combatant.id
+        });
         return {
           ...combatant,
-          deathSaves: {
-            status: 'dead',
-            successes: 0,
-            failures: 3,
-            startedAtRound,
-            lastRollRound: action.payload.round
-          }
+          deathSaves: updatedDeathSaves
         };
       });
-      const entry =
-        markedCombatant !== null
-          ? createLogEntry('info', `${markedCombatant.name} has died.`, state.round, {
-              combatantId: markedCombatant.id
-            })
-          : null;
       return {
         ...state,
         combatants,
-        log: appendLog(state.log, entry)
+        log: appendLog(state.log, logEntry)
       };
     }
     case 'record-death-save': {
       let logEntry: CombatLogEntry | null = null;
-      const combatants = state.combatants.map((combatant) => {
+      const combatants = state.combatants.map<Combatant>((combatant) => {
         if (combatant.id !== action.payload.id) {
           return combatant;
         }
@@ -713,7 +706,7 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
       };
     }
     case 'set-death-save-counts': {
-      const combatants = state.combatants.map((combatant) => {
+      const combatants = state.combatants.map<Combatant>((combatant) => {
         if (combatant.id !== action.payload.id) {
           return combatant;
         }
@@ -729,15 +722,16 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
         }
         const startedAtRound = combatant.deathSaves?.startedAtRound ?? state.round;
         const lastRollRound = successes === 0 && failures === 0 ? null : combatant.deathSaves?.lastRollRound ?? null;
+        const updated: DeathSaveState = {
+          status,
+          successes,
+          failures,
+          startedAtRound,
+          lastRollRound
+        };
         return {
           ...combatant,
-          deathSaves: {
-            status,
-            successes,
-            failures,
-            startedAtRound,
-            lastRollRound
-          }
+          deathSaves: updated
         };
       });
       return {
