@@ -80,7 +80,8 @@ export type CombatLogEventType =
   | 'status-add'
   | 'status-remove'
   | 'combatant-add'
-  | 'combatant-remove';
+  | 'combatant-remove'
+  | 'death';
 
 export interface CombatLogEntry {
   id: string;
