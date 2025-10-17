@@ -131,19 +131,37 @@ const sortCombatants = (combatants: Combatant[]) =>
     return b.initiative - a.initiative;
   });
 
-const decrementStatusDurations = (combatants: Combatant[]) =>
-  combatants.map((combatant) => ({
-    ...combatant,
-    statuses: combatant.statuses
-      .map((status) => {
-        if (status.remainingRounds === null) {
-          return status;
-        }
-        const next = status.remainingRounds - 1;
-        return { ...status, remainingRounds: next };
-      })
-      .filter((status) => status.remainingRounds === null || status.remainingRounds > 0)
-  }));
+const decrementStatusDurations = (
+  combatants: Combatant[]
+): {
+  combatants: Combatant[];
+  expiredStatuses: Array<{ ownerId: string; ownerName: string; status: StatusEffectInstance }>;
+} => {
+  const expiredStatuses: Array<{ ownerId: string; ownerName: string; status: StatusEffectInstance }> = [];
+  const updatedCombatants = combatants.map((combatant) => {
+    const nextStatuses: StatusEffectInstance[] = [];
+    combatant.statuses.forEach((status) => {
+      if (status.remainingRounds === null) {
+        nextStatuses.push(status);
+        return;
+      }
+      const next = status.remainingRounds - 1;
+      if (next > 0) {
+        nextStatuses.push({ ...status, remainingRounds: next });
+      } else {
+        expiredStatuses.push({ ownerId: combatant.id, ownerName: combatant.name, status });
+      }
+    });
+    return {
+      ...combatant,
+      statuses: nextStatuses
+    };
+  });
+  return {
+    combatants: updatedCombatants,
+    expiredStatuses
+  };
+};
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -413,15 +431,18 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
       const damageType = action.payload.damageType.trim();
       const damageLabel =
         damageType && damageType.toLowerCase().endsWith('damage') ? damageType : damageType ? `${damageType} damage` : 'damage';
-      const logEntry = createLogEntry(
-        'attack',
-        `${attackerName} dealt ${appliedDamage} ${damageLabel} to ${targetName} (${nextHp}/${target.hp.max}).`,
-        state.round,
-        {
-          combatantId: target.id,
-          amount: appliedDamage
-        }
-      );
+      const logEntry =
+        appliedDamage > 0
+          ? createLogEntry(
+              'attack',
+              `${attackerName} dealt ${appliedDamage} ${damageLabel} to ${targetName} (${nextHp}/${target.hp.max}).`,
+              state.round,
+              {
+                combatantId: target.id,
+                amount: appliedDamage
+              }
+            )
+          : null;
       const updatedTarget = combatants.find((combatant) => combatant.id === target.id);
       const zeroHpLog = createZeroHpLog(target, updatedTarget, state.round);
       return {
@@ -457,15 +478,18 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
       const targetName = target.name;
       const healingType = action.payload.healingType.trim();
       const healingSuffix = healingType ? ` via ${healingType}` : '';
-      const logEntry = createLogEntry(
-        'heal',
-        `${targetName} regained ${appliedHealing} HP${healingSuffix} (${nextHp}/${target.hp.max}).`,
-        state.round,
-        {
-          combatantId: target.id,
-          amount: appliedHealing
-        }
-      );
+      const logEntry =
+        appliedHealing > 0
+          ? createLogEntry(
+              'heal',
+              `${targetName} regained ${appliedHealing} HP${healingSuffix} (${nextHp}/${target.hp.max}).`,
+              state.round,
+              {
+                combatantId: target.id,
+                amount: appliedHealing
+              }
+            )
+          : null;
       return {
         ...state,
         combatants,
@@ -483,9 +507,23 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
       const currentIndex = sorted.findIndex((combatant) => combatant.id === state.activeCombatantId);
       const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % sorted.length;
       const wrapped = currentIndex !== -1 && nextIndex === 0;
-      const combatants = wrapped ? decrementStatusDurations(sorted) : sorted;
+      const decrementResult = wrapped
+        ? decrementStatusDurations(sorted)
+        : {
+            combatants: sorted,
+            expiredStatuses: [] as Array<{ ownerId: string; ownerName: string; status: StatusEffectInstance }>
+          };
+      const { combatants, expiredStatuses } = decrementResult;
       const nextRound = wrapped ? state.round + 1 : state.round;
       const nextCombatant = combatants[nextIndex];
+      const statusExpirationEntries = expiredStatuses.map((item) =>
+        createLogEntry(
+          'status-remove',
+          `${item.status.icon} ${item.status.label} expired from ${item.ownerName}.`,
+          nextRound,
+          { combatantId: item.ownerId }
+        )
+      );
       const entry = nextCombatant
         ? createLogEntry(
             'turn',
@@ -499,7 +537,7 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
         activeCombatantId: combatants[nextIndex]?.id ?? null,
         round: nextRound,
         startedAt: state.startedAt ?? new Date().toISOString(),
-        log: appendLog(state.log, entry)
+        log: appendLogs(state.log, [...statusExpirationEntries, entry])
       };
     }
     case 'rewind': {
@@ -744,6 +782,7 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
         if (combatant.id !== action.payload.id) {
           return combatant;
         }
+        const previousStatus = combatant.deathSaves?.status ?? null;
         const successes = clamp(Math.round(action.payload.successes), 0, 3);
         const failures = clamp(Math.round(action.payload.failures), 0, 3);
         let status: DeathSaveStatus;
@@ -767,6 +806,20 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
           logEntry = createLogEntry(
             'death',
             `${combatant.name} has died.`,
+            state.round,
+            { combatantId: combatant.id }
+          );
+        } else if (status === 'stable' && previousStatus !== 'stable') {
+          logEntry = createLogEntry(
+            'info',
+            `${combatant.name} stabilized at 0 HP.`,
+            state.round,
+            { combatantId: combatant.id }
+          );
+        } else if (status === 'pending' && previousStatus !== 'pending') {
+          logEntry = createLogEntry(
+            'info',
+            `${combatant.name} is making death saving throws.`,
             state.round,
             { combatantId: combatant.id }
           );
