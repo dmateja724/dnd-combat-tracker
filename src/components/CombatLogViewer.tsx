@@ -12,6 +12,7 @@ const typeIcons: Record<CombatLogEventType, string> = {
   'status-remove': '➖',
   'combatant-add': '🎯',
   'combatant-remove': '🚪',
+  death: '💀',
   info: 'ℹ️'
 };
 
@@ -24,6 +25,7 @@ const typeLabels: Record<CombatLogEventType, string> = {
   'status-remove': 'Status Removed',
   'combatant-add': 'Combatant Added',
   'combatant-remove': 'Combatant Removed',
+  death: 'Death',
   info: 'Info'
 };
 

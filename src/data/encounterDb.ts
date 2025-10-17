@@ -94,7 +94,8 @@ const coerceLogEntry = (value: unknown): CombatLogEntry | null => {
     value.type !== 'status-add' &&
     value.type !== 'status-remove' &&
     value.type !== 'combatant-add' &&
-    value.type !== 'combatant-remove'
+    value.type !== 'combatant-remove' &&
+    value.type !== 'death'
   ) {
     return null;
   }
