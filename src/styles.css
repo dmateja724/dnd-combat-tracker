@@ -355,6 +355,10 @@ button {
   border-color: rgba(214, 40, 40, 0.45);
 }
 
+.combat-log-item--death {
+  border-color: rgba(104, 33, 33, 0.55);
+}
+
 .combat-log-item--heal {
   border-color: rgba(43, 147, 72, 0.45);
 }

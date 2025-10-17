@@ -89,6 +89,9 @@ const appendLog = (log: CombatLogEntry[], entry: CombatLogEntry | null): CombatL
   return next.slice(next.length - MAX_LOG_ENTRIES);
 };
 
+const appendLogs = (log: CombatLogEntry[], entries: Array<CombatLogEntry | null | undefined>): CombatLogEntry[] =>
+  entries.reduce((accumulator, entry) => appendLog(accumulator, entry ?? null), log);
+
 const createLogEntry = (
   type: CombatLogEventType,
   message: string,
@@ -102,6 +105,23 @@ const createLogEntry = (
   timestamp: new Date().toISOString(),
   ...extras
 });
+
+const createZeroHpLog = (
+  before: Combatant | undefined,
+  after: Combatant | undefined,
+  round: number
+): CombatLogEntry | null => {
+  if (!before || !after) return null;
+  if (before.hp.current <= 0) return null;
+  if (after.hp.current > 0) return null;
+
+  const message =
+    after.type === 'player' || after.type === 'ally'
+      ? `${after.name} fell unconscious.`
+      : `${after.name} was defeated.`;
+
+  return createLogEntry('death', message, round, { combatantId: after.id });
+};
 
 const sortCombatants = (combatants: Combatant[]) =>
   [...combatants].sort((a, b) => {
@@ -313,14 +333,17 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
           });
         }
       }
+      const zeroHpLog = createZeroHpLog(targetBefore, targetAfter, state.round);
       return {
         ...state,
         combatants,
-        log: appendLog(state.log, logEntry)
+        log: appendLogs(state.log, [logEntry, zeroHpLog])
       };
     }
     case 'apply-delta': {
       let logEntry: CombatLogEntry | null = null;
+      let updatedCombatant: Combatant | null = null;
+      const targetBefore = state.combatants.find((combatant) => combatant.id === action.payload.id);
       const combatants = state.combatants.map((combatant) => {
         if (combatant.id !== action.payload.id) return combatant;
         const next = Math.max(0, Math.min(combatant.hp.max, combatant.hp.current - action.payload.delta));
@@ -342,7 +365,7 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
             );
           }
         }
-        return {
+        const updated = {
           ...combatant,
           hp: {
             ...combatant.hp,
@@ -350,11 +373,15 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
           },
           deathSaves: resolveDeathSavesAfterHpChange(combatant, next, undefined)
         };
+        updatedCombatant = updated;
+        return updated;
       });
+      const targetAfter = updatedCombatant ?? combatants.find((combatant) => combatant.id === action.payload.id);
+      const zeroHpLog = createZeroHpLog(targetBefore, targetAfter, state.round);
       return {
         ...state,
         combatants,
-        log: appendLog(state.log, logEntry)
+        log: appendLogs(state.log, [logEntry, zeroHpLog])
       };
     }
     case 'attack': {
@@ -395,10 +422,12 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
           amount: appliedDamage
         }
       );
+      const updatedTarget = combatants.find((combatant) => combatant.id === target.id);
+      const zeroHpLog = createZeroHpLog(target, updatedTarget, state.round);
       return {
         ...state,
         combatants,
-        log: appendLog(state.log, logEntry)
+        log: appendLogs(state.log, [logEntry, zeroHpLog])
       };
     }
     case 'heal': {
@@ -627,7 +656,7 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
           startedAtRound,
           lastRollRound: action.payload.round
         };
-        logEntry = createLogEntry('info', `${combatant.name} has died.`, state.round, {
+        logEntry = createLogEntry('death', `${combatant.name} has died.`, state.round, {
           combatantId: combatant.id
         });
         return {
@@ -679,7 +708,7 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
         };
         if (status === 'dead') {
           logEntry = createLogEntry(
-            'info',
+            'death',
             `${combatant.name} succumbed to their wounds.`,
             state.round,
             { combatantId: combatant.id }
@@ -710,6 +739,7 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
       };
     }
     case 'set-death-save-counts': {
+      let logEntry: CombatLogEntry | null = null;
       const combatants = state.combatants.map<Combatant>((combatant) => {
         if (combatant.id !== action.payload.id) {
           return combatant;
@@ -733,6 +763,14 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
           startedAtRound,
           lastRollRound
         };
+        if (status === 'dead' && combatant.deathSaves?.status !== 'dead') {
+          logEntry = createLogEntry(
+            'death',
+            `${combatant.name} has died.`,
+            state.round,
+            { combatantId: combatant.id }
+          );
+        }
         return {
           ...combatant,
           deathSaves: updated
@@ -740,7 +778,8 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
       });
       return {
         ...state,
-        combatants
+        combatants,
+        log: appendLog(state.log, logEntry)
       };
     }
     case 'clear-death-saves': {
