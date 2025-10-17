@@ -78,7 +78,7 @@ interface TrackerBroadcastMessage {
 
 const BROADCAST_CHANNEL_PREFIX = 'combat-tracker:encounter:';
 
-const MAX_LOG_ENTRIES = 250;
+const MAX_LOG_ENTRIES = 1000;
 
 const appendLog = (log: CombatLogEntry[], entry: CombatLogEntry | null): CombatLogEntry[] => {
   if (!entry) return log;

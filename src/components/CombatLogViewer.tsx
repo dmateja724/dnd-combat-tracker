@@ -58,7 +58,7 @@ const renderEntry = (entry: CombatLogEntry) => (
 
 const CombatLogViewer = () => {
   const { selectedEncounterId, selectedEncounter } = useEncounterContext();
-  const { state, actions, isLoading } = useCombatTracker(selectedEncounterId);
+  const { state, isLoading } = useCombatTracker(selectedEncounterId);
 
   const entries = useMemo(() => [...state.log].reverse(), [state.log]);
 
@@ -96,20 +96,6 @@ const CombatLogViewer = () => {
           <p className="log-viewer-subtitle">
             {selectedEncounterId ? `Round ${state.round}` : 'Awaiting encounter selection'}
           </p>
-        </div>
-        <div className="log-viewer-meta">
-          <div className="log-viewer-count">
-            <span className="log-meta-label">Entries</span>
-            <span className="log-meta-value">{state.log.length}</span>
-          </div>
-          <button
-            type="button"
-            className="ghost"
-            onClick={() => actions.clearLog()}
-            disabled={state.log.length === 0}
-          >
-            Clear Log
-          </button>
         </div>
       </header>
       <main className="log-viewer-main">{body}</main>
