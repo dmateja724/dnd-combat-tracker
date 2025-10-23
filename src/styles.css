@@ -1029,6 +1029,84 @@ button {
   z-index: 1;
 }
 
+.death-showcase-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1600;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.death-showcase-backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(23, 16, 10, 0.78), rgba(4, 3, 2, 0.92) 70%);
+  opacity: 0;
+  animation: deathShowcaseFadeIn 180ms ease forwards;
+}
+
+.death-showcase-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 4vw, 28px);
+  align-items: center;
+  justify-content: center;
+  max-width: min(92vw, 540px);
+  padding: clamp(18px, 5vw, 34px);
+  cursor: auto;
+  animation: deathShowcaseRise 360ms cubic-bezier(0.18, 0.9, 0.32, 1.2);
+}
+
+.death-showcase-card {
+  width: min(82vw, 460px);
+  pointer-events: none;
+  filter: drop-shadow(0 24px 60px rgba(0, 0, 0, 0.55));
+}
+
+.death-showcase-card .combatant-card {
+  pointer-events: none;
+}
+
+.death-showcase-message {
+  color: var(--text-primary);
+  font-size: clamp(16px, 3vw, 20px);
+  font-weight: 500;
+  text-align: center;
+  max-width: 90%;
+  line-height: 1.45;
+  text-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes deathShowcaseFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes deathShowcaseRise {
+  from {
+    opacity: 0;
+    transform: translateY(48px) scale(0.94);
+  }
+
+  60% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes deathOverlayFade {
   0% {
     opacity: 0;
@@ -1896,11 +1974,54 @@ button.danger-button:hover:not(:disabled) {
   justify-content: space-between;
 }
 
+.add-combatant-title {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+}
+
+.add-combatant-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+  margin-bottom: 12px;
+}
+
+.add-combatant-toolbar__spacer {
+  flex: 1 1 auto;
+}
+
+.add-combatant-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.add-combatant-toolbar .primary,
+.add-combatant-toolbar .ghost {
+  min-width: 160px;
+}
+
+.add-combatant-toolbar__button {
+  margin-right: 8px;
+}
+
+.add-combatant-toolbar__lead .add-combatant-toolbar__button:last-child {
+  margin-right: 0;
+}
+
+.add-combatant-toolbar__actions .add-combatant-toolbar__button {
+  margin-right: 0;
+}
+
 .add-combatant h3 {
   font-family: 'Unbounded', 'Inter', sans-serif;
   font-size: 18px;
   letter-spacing: 0.04em;
 }
+
 
 .add-combatant-close {
   background: transparent;

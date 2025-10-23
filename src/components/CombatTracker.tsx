@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, CSSProperties } from 'react';
 import clsx from 'clsx';
 import { useCombatTracker } from '../hooks/useCombatTracker';
+import { useDeathShowcase } from '../hooks/useDeathShowcase';
 import CombatantCard from './CombatantCard';
+import DeathShowcase from './DeathShowcase';
+import ViewerCombatantCard from './ViewerCombatantCard';
 import AddCombatantForm from './forms/AddCombatantForm';
 import AttackActionForm from './forms/AttackActionForm';
 import HealActionForm from './forms/HealActionForm';
@@ -40,6 +43,12 @@ const CombatTracker = () => {
   const accountImportInputRef = useRef<HTMLInputElement | null>(null);
   const [deathSaveDecisionQueue, setDeathSaveDecisionQueue] = useState<string[]>([]);
   const previousHpRef = useRef<Map<string, number>>(new Map());
+  const autoOpenedEncounterRef = useRef<string | null>(null);
+  const { activeShowcase: activeDeathShowcase, dismiss: dismissDeathShowcase } = useDeathShowcase({
+    encounterId: selectedEncounterId,
+    combatants: state.combatants,
+    log: state.log
+  });
 
   const handleAddStatus = (combatantId: string, template: StatusEffectTemplate, rounds: number | null, note?: string) => {
     actions.addStatus(combatantId, template, rounds, note);
@@ -51,6 +60,25 @@ const CombatTracker = () => {
   useEffect(() => {
     setIsSelectionModalOpen(!selectedEncounterId);
   }, [selectedEncounterId]);
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+    if (!selectedEncounterId) {
+      autoOpenedEncounterRef.current = null;
+      return;
+    }
+    const isFreshEncounter = !state.startedAt && state.combatants.length === 0;
+    if (isFreshEncounter) {
+      if (autoOpenedEncounterRef.current !== selectedEncounterId) {
+        autoOpenedEncounterRef.current = selectedEncounterId;
+        setIsCreateModalOpen(true);
+      }
+    } else {
+      autoOpenedEncounterRef.current = null;
+    }
+  }, [selectedEncounterId, state.startedAt, state.combatants.length, isLoading]);
 
   useEffect(() => {
     return () => {
@@ -163,6 +191,11 @@ const CombatTracker = () => {
 
   const handleRecordDeathSave = (combatantId: string, result: 'success' | 'failure') => {
     actions.recordDeathSaveResult(combatantId, result, state.round);
+  };
+
+  const handleStartEncounter = () => {
+    actions.startEncounter();
+    setIsCreateModalOpen(false);
   };
 
   const rollDie = (sides: number) => {
@@ -327,6 +360,10 @@ const CombatTracker = () => {
     'account-name--xsmall': accountLabel.length > 26
   });
 
+  const encounterHasCombatants = state.combatants.length > 0;
+  const encounterStarted = Boolean(state.startedAt);
+  const showStartEncounter = !encounterStarted;
+  const startEncounterDisabled = !encounterHasCombatants;
   const activeIndex = state.activeCombatantId
     ? state.combatants.findIndex((combatant) => combatant.id === state.activeCombatantId)
     : 0;
@@ -345,6 +382,13 @@ const CombatTracker = () => {
 
   return (
     <div className="tracker-shell">
+      {activeDeathShowcase ? (
+        <DeathShowcase
+          card={<ViewerCombatantCard combatant={activeDeathShowcase.combatant} isActive />}
+          message={activeDeathShowcase.logEntry.message}
+          onDismiss={dismissDeathShowcase}
+        />
+      ) : null}
       <header className="tracker-header">
         <div className="tracker-top-row">
           <div className="tracker-heading">
@@ -461,7 +505,7 @@ const CombatTracker = () => {
       <div className="tracker-main">
         <section className="combatant-strip">
           <div className="turn-controls turn-controls--carousel">
-            <button type="button" onClick={actions.rewindTurn} className="ghost">
+            <button type="button" onClick={actions.rewindTurn} className="ghost" disabled={showStartEncounter}>
               ⏮ Prev
             </button>
             <button
@@ -480,9 +524,15 @@ const CombatTracker = () => {
             >
               ✨ Heal
             </button>
-            <button type="button" onClick={actions.advanceTurn} className="primary">
-              Next ⏭
-            </button>
+            {showStartEncounter ? (
+              <button type="button" onClick={handleStartEncounter} className="primary">
+                Start Encounter
+              </button>
+            ) : (
+              <button type="button" onClick={actions.advanceTurn} className="primary">
+                Next ⏭
+              </button>
+            )}
           </div>
           {state.combatants.length === 0 ? (
             <div className="empty-state">
@@ -613,6 +663,9 @@ const CombatTracker = () => {
           }}
           iconOptions={presets.icons}
           onCancel={() => setIsCreateModalOpen(false)}
+          onStartEncounter={handleStartEncounter}
+          showStartEncounter={showStartEncounter}
+          startEncounterDisabled={startEncounterDisabled}
         />
       </Modal>
       <Modal

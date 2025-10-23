@@ -1,7 +1,9 @@
 import type { CSSProperties, ReactNode } from 'react';
 import ViewerCombatantCard from './ViewerCombatantCard';
+import DeathShowcase from './DeathShowcase';
 import { useEncounterContext } from '../context/EncounterContext';
 import { useCombatTracker } from '../hooks/useCombatTracker';
+import { useDeathShowcase } from '../hooks/useDeathShowcase';
 
 type CarouselItemStyle = CSSProperties & {
   '--offset'?: number;
@@ -11,6 +13,11 @@ type CarouselItemStyle = CSSProperties & {
 const CombatantViewer = () => {
   const { selectedEncounterId, selectedEncounter } = useEncounterContext();
   const { state, isLoading } = useCombatTracker(selectedEncounterId);
+  const { activeShowcase: activeDeathShowcase, dismiss: dismissDeathShowcase } = useDeathShowcase({
+    encounterId: selectedEncounterId,
+    combatants: state.combatants,
+    log: state.log
+  });
 
   const normalizedActiveIndex = state.activeIndex >= 0 ? state.activeIndex : 0;
   const activeCombatant = state.combatants[normalizedActiveIndex];
@@ -66,6 +73,13 @@ const CombatantViewer = () => {
 
   return (
     <div className="tracker-shell viewer-shell">
+      {activeDeathShowcase ? (
+        <DeathShowcase
+          card={<ViewerCombatantCard combatant={activeDeathShowcase.combatant} isActive />}
+          message={activeDeathShowcase.logEntry.message}
+          onDismiss={dismissDeathShowcase}
+        />
+      ) : null}
       <header className="viewer-header">
         <div className="viewer-heading">
           <h1>{selectedEncounter?.name ?? 'Encounter Viewer'}</h1>
