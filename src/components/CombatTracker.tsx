@@ -62,11 +62,14 @@ const CombatTracker = () => {
   }, [selectedEncounterId]);
 
   useEffect(() => {
+    if (isLoading) {
+      return;
+    }
     if (!selectedEncounterId) {
       autoOpenedEncounterRef.current = null;
       return;
     }
-    const isFreshEncounter = !state.startedAt && state.log.length === 0 && state.combatants.length === 0;
+    const isFreshEncounter = !state.startedAt && state.combatants.length === 0;
     if (isFreshEncounter) {
       if (autoOpenedEncounterRef.current !== selectedEncounterId) {
         autoOpenedEncounterRef.current = selectedEncounterId;
@@ -75,7 +78,7 @@ const CombatTracker = () => {
     } else {
       autoOpenedEncounterRef.current = null;
     }
-  }, [selectedEncounterId, state.startedAt, state.log.length, state.combatants.length]);
+  }, [selectedEncounterId, state.startedAt, state.combatants.length, isLoading]);
 
   useEffect(() => {
     return () => {
