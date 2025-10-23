@@ -26,13 +26,21 @@ interface AttackActionFormProps {
 }
 
 const AttackActionForm = ({ combatants, defaultAttackerId, onSubmit, onCancel }: AttackActionFormProps) => {
+  const aliveCombatants = useMemo(
+    () =>
+      combatants.filter(
+        (combatant) => combatant.hp.current > 0 && (combatant.deathSaves?.status ?? 'pending') !== 'dead'
+      ),
+    [combatants]
+  );
+
   const fallbackAttackerId = useMemo(() => {
-    if (!combatants.length) return '';
-    if (defaultAttackerId && combatants.some((combatant) => combatant.id === defaultAttackerId)) {
+    if (!aliveCombatants.length) return '';
+    if (defaultAttackerId && aliveCombatants.some((combatant) => combatant.id === defaultAttackerId)) {
       return defaultAttackerId;
     }
-    return combatants[0]?.id ?? '';
-  }, [combatants, defaultAttackerId]);
+    return aliveCombatants[0]?.id ?? '';
+  }, [aliveCombatants, defaultAttackerId]);
 
   const [attackerId, setAttackerId] = useState(fallbackAttackerId);
   const [targetId, setTargetId] = useState<string>('');
@@ -41,32 +49,32 @@ const AttackActionForm = ({ combatants, defaultAttackerId, onSubmit, onCancel }:
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (attackerId && combatants.some((combatant) => combatant.id === attackerId)) {
+    if (attackerId && aliveCombatants.some((combatant) => combatant.id === attackerId)) {
       return;
     }
     setAttackerId(fallbackAttackerId);
-  }, [attackerId, combatants, fallbackAttackerId]);
+  }, [attackerId, aliveCombatants, fallbackAttackerId]);
 
   useEffect(() => {
-    const availableTargets = combatants.filter((combatant) => combatant.id !== attackerId);
+    const availableTargets = aliveCombatants.filter((combatant) => combatant.id !== attackerId);
     if (availableTargets.some((combatant) => combatant.id === targetId)) {
       return;
     }
     if (targetId !== '') {
       setTargetId('');
     }
-  }, [attackerId, combatants, targetId]);
+  }, [attackerId, aliveCombatants, targetId]);
 
   useEffect(() => {
-    if (defaultAttackerId && combatants.some((combatant) => combatant.id === defaultAttackerId)) {
+    if (defaultAttackerId && aliveCombatants.some((combatant) => combatant.id === defaultAttackerId)) {
       setAttackerId(defaultAttackerId);
     }
-  }, [combatants, defaultAttackerId]);
+  }, [aliveCombatants, defaultAttackerId]);
 
-  const attacker = combatants.find((combatant) => combatant.id === attackerId) ?? null;
+  const attacker = aliveCombatants.find((combatant) => combatant.id === attackerId) ?? null;
   const targetOptions = useMemo(
-    () => combatants.filter((combatant) => combatant.id !== attackerId),
-    [combatants, attackerId]
+    () => aliveCombatants.filter((combatant) => combatant.id !== attackerId),
+    [aliveCombatants, attackerId]
   );
   const target = targetOptions.find((combatant) => combatant.id === targetId) ?? null;
 
@@ -100,7 +108,7 @@ const AttackActionForm = ({ combatants, defaultAttackerId, onSubmit, onCancel }:
 
   const datalistId = 'damage-type-options';
 
-  const canSubmit = attacker && target && combatants.length > 1 && amount.trim() !== '';
+  const canSubmit = attacker && target && aliveCombatants.length > 1 && amount.trim() !== '';
 
   return (
     <div className="attack-action-modal">
@@ -116,8 +124,13 @@ const AttackActionForm = ({ combatants, defaultAttackerId, onSubmit, onCancel }:
       <form className="attack-action-form" onSubmit={handleSubmit}>
         <label>
           Attacker
-          <select value={attackerId} onChange={(event) => setAttackerId(event.target.value)}>
-            {combatants.map((combatant) => (
+          <select value={attackerId} onChange={(event) => setAttackerId(event.target.value)} disabled={aliveCombatants.length === 0}>
+            {aliveCombatants.length === 0 ? (
+              <option value="" disabled>
+                No living combatants
+              </option>
+            ) : null}
+            {aliveCombatants.map((combatant) => (
               <option key={combatant.id} value={combatant.id}>
                 {combatant.name}
               </option>

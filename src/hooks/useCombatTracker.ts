@@ -218,6 +218,18 @@ const resolveDeathSavesAfterHpChange = (
   return nextHp > 0 ? null : combatant.deathSaves ?? null;
 };
 
+const isTurnEligible = (combatant: Combatant) => {
+  if (combatant.hp.current > 0) {
+    return true;
+  }
+  const isPlayerOrAlly = combatant.type === 'player' || combatant.type === 'ally';
+  if (!isPlayerOrAlly) {
+    return false;
+  }
+  const deathStatus = combatant.deathSaves?.status ?? 'pending';
+  return deathStatus !== 'dead';
+};
+
 const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerState => {
   switch (action.type) {
     case 'hydrate': {
@@ -506,7 +518,7 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
       const sorted = sortCombatants(state.combatants);
       const currentIndex = sorted.findIndex((combatant) => combatant.id === state.activeCombatantId);
       const aliveIndices = sorted.reduce<number[]>((indices, combatant, index) => {
-        if (combatant.hp.current > 0) {
+        if (isTurnEligible(combatant)) {
           indices.push(index);
         }
         return indices;
@@ -565,7 +577,7 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
       const sorted = sortCombatants(state.combatants);
       const currentIndex = sorted.findIndex((combatant) => combatant.id === state.activeCombatantId);
       const aliveIndices = sorted.reduce<number[]>((indices, combatant, index) => {
-        if (combatant.hp.current > 0) {
+        if (isTurnEligible(combatant)) {
           indices.push(index);
         }
         return indices;
@@ -787,6 +799,8 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
           startedAtRound: current.startedAtRound,
           lastRollRound: action.payload.round
         };
+        let nextDeathSaves: DeathSaveState | null = updated;
+        let nextHp = combatant.hp;
         if (status === 'dead') {
           logEntry = createLogEntry(
             'death',
@@ -795,9 +809,20 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
             { combatantId: combatant.id }
           );
         } else if (status === 'stable') {
+          const revivedHp =
+            combatant.hp.max > 0
+              ? Math.min(combatant.hp.max, Math.max(1, combatant.hp.current))
+              : 1;
+          if (revivedHp !== combatant.hp.current) {
+            nextHp = {
+              ...combatant.hp,
+              current: revivedHp
+            };
+          }
+          nextDeathSaves = null;
           logEntry = createLogEntry(
             'info',
-            `${combatant.name} stabilized at 0 HP.`,
+            `${combatant.name} stabilized and regained consciousness (1 HP).`,
             state.round,
             { combatantId: combatant.id }
           );
@@ -810,7 +835,8 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
         }
         return {
           ...combatant,
-          deathSaves: updated
+          hp: nextHp,
+          deathSaves: nextDeathSaves
         };
       });
       return {
@@ -845,6 +871,8 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
           startedAtRound,
           lastRollRound
         };
+        let nextDeathSaves: DeathSaveState | null = updated;
+        let nextHp = combatant.hp;
         if (status === 'dead' && combatant.deathSaves?.status !== 'dead') {
           logEntry = createLogEntry(
             'death',
@@ -853,9 +881,20 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
             { combatantId: combatant.id }
           );
         } else if (status === 'stable' && previousStatus !== 'stable') {
+          const revivedHp =
+            combatant.hp.max > 0
+              ? Math.min(combatant.hp.max, Math.max(1, combatant.hp.current))
+              : 1;
+          if (revivedHp !== combatant.hp.current) {
+            nextHp = {
+              ...combatant.hp,
+              current: revivedHp
+            };
+          }
+          nextDeathSaves = null;
           logEntry = createLogEntry(
             'info',
-            `${combatant.name} stabilized at 0 HP.`,
+            `${combatant.name} stabilized and regained consciousness (1 HP).`,
             state.round,
             { combatantId: combatant.id }
           );
@@ -869,7 +908,8 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
         }
         return {
           ...combatant,
-          deathSaves: updated
+          hp: nextHp,
+          deathSaves: nextDeathSaves
         };
       });
       return {

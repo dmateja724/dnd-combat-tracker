@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, CSSProperties } from 'react';
 import clsx from 'clsx';
 import { useCombatTracker } from '../hooks/useCombatTracker';
+import { useDeathShowcase } from '../hooks/useDeathShowcase';
 import CombatantCard from './CombatantCard';
+import DeathShowcase from './DeathShowcase';
+import ViewerCombatantCard from './ViewerCombatantCard';
 import AddCombatantForm from './forms/AddCombatantForm';
 import AttackActionForm from './forms/AttackActionForm';
 import HealActionForm from './forms/HealActionForm';
@@ -40,6 +43,11 @@ const CombatTracker = () => {
   const accountImportInputRef = useRef<HTMLInputElement | null>(null);
   const [deathSaveDecisionQueue, setDeathSaveDecisionQueue] = useState<string[]>([]);
   const previousHpRef = useRef<Map<string, number>>(new Map());
+  const { activeShowcase: activeDeathShowcase, dismiss: dismissDeathShowcase } = useDeathShowcase({
+    encounterId: selectedEncounterId,
+    combatants: state.combatants,
+    log: state.log
+  });
 
   const handleAddStatus = (combatantId: string, template: StatusEffectTemplate, rounds: number | null, note?: string) => {
     actions.addStatus(combatantId, template, rounds, note);
@@ -345,6 +353,13 @@ const CombatTracker = () => {
 
   return (
     <div className="tracker-shell">
+      {activeDeathShowcase ? (
+        <DeathShowcase
+          card={<ViewerCombatantCard combatant={activeDeathShowcase.combatant} isActive />}
+          message={activeDeathShowcase.logEntry.message}
+          onDismiss={dismissDeathShowcase}
+        />
+      ) : null}
       <header className="tracker-header">
         <div className="tracker-top-row">
           <div className="tracker-heading">
