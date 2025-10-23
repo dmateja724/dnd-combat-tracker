@@ -1974,11 +1974,54 @@ button.danger-button:hover:not(:disabled) {
   justify-content: space-between;
 }
 
+.add-combatant-title {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+}
+
+.add-combatant-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+  margin-bottom: 12px;
+}
+
+.add-combatant-toolbar__spacer {
+  flex: 1 1 auto;
+}
+
+.add-combatant-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.add-combatant-toolbar .primary,
+.add-combatant-toolbar .ghost {
+  min-width: 160px;
+}
+
+.add-combatant-toolbar__button {
+  margin-right: 8px;
+}
+
+.add-combatant-toolbar__lead .add-combatant-toolbar__button:last-child {
+  margin-right: 0;
+}
+
+.add-combatant-toolbar__actions .add-combatant-toolbar__button {
+  margin-right: 0;
+}
+
 .add-combatant h3 {
   font-family: 'Unbounded', 'Inter', sans-serif;
   font-size: 18px;
   letter-spacing: 0.04em;
 }
+
 
 .add-combatant-close {
   background: transparent;

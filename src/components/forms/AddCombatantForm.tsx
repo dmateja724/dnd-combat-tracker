@@ -7,6 +7,9 @@ interface AddCombatantFormProps {
   onCreate: (payload: AddCombatantInput, options?: { stayOpen?: boolean }) => void;
   iconOptions: { id: string; label: string; icon: string }[];
   onCancel?: () => void;
+  onStartEncounter?: () => void;
+  showStartEncounter?: boolean;
+  startEncounterDisabled?: boolean;
 }
 
 type FormState = {
@@ -53,7 +56,14 @@ const toTemplateInput = (state: FormState): CombatantTemplateInput => {
   };
 };
 
-const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormProps) => {
+const AddCombatantForm = ({
+  onCreate,
+  iconOptions,
+  onCancel,
+  onStartEncounter,
+  showStartEncounter = false,
+  startEncounterDisabled = false
+}: AddCombatantFormProps) => {
   const initialState: FormState = useMemo(
     () => ({
       name: '',
@@ -180,7 +190,9 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
   return (
     <form className="add-combatant" onSubmit={handleSubmit}>
       <div className="add-combatant-head">
-        <h3>Add Combatant</h3>
+        <div className="add-combatant-title">
+          <h3>Add Combatant</h3>
+        </div>
         {editingTemplateId ? (
           <button
             type="button"
@@ -192,21 +204,52 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
             Cancel Edit
           </button>
         ) : null}
-        {onCancel && (
+        {onCancel && !showStartEncounter && (
           <button type="button" className="add-combatant-close" onClick={onCancel} aria-label="Close add combatant form">
             ×
           </button>
         )}
       </div>
+      <div className="add-combatant-toolbar">
+        <div className="add-combatant-toolbar__lead">
+          {onStartEncounter && showStartEncounter ? (
+            <button
+              type="button"
+              className="primary add-combatant-toolbar__button"
+              onClick={onStartEncounter}
+              disabled={startEncounterDisabled}
+            >
+              Start Encounter
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="ghost add-combatant-toolbar__button"
+            onClick={() => void refresh()}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
+        <div className="add-combatant-toolbar__spacer" />
+        <div className="add-combatant-toolbar__actions">
+          <button type="submit" className="primary add-combatant-toolbar__button" disabled={!numericFieldsFilled}>
+            Add to Encounter
+          </button>
+          <button
+            type="button"
+            className="ghost add-combatant-toolbar__button"
+            onClick={() => void handleSaveTemplate()}
+            disabled={isMutating || !numericFieldsFilled}
+          >
+            {isMutating ? 'Saving…' : editingTemplateId ? 'Update Template' : 'Save to Library'}
+          </button>
+        </div>
+      </div>
       <div className="add-combatant-grid">
         <section className="saved-combatant-panel">
           <div className="saved-combatant-head">
             <h4>Saved Combatants</h4>
-            <div className="saved-combatant-tools">
-              <button type="button" className="ghost" onClick={() => void refresh()} disabled={isLoading}>
-                {isLoading ? 'Refreshing…' : 'Refresh'}
-              </button>
-            </div>
           </div>
           {error && <p className="form-warning">{error}</p>}
           <div className="saved-combatant-scroll">
@@ -387,20 +430,6 @@ const AddCombatantForm = ({ onCreate, iconOptions, onCancel }: AddCombatantFormP
 
           {localError && <p className="form-warning">{localError}</p>}
           {feedback && <p className="form-feedback">{feedback}</p>}
-
-          <div className="form-actions">
-            <button type="submit" className="primary" disabled={!numericFieldsFilled}>
-              Add to Encounter
-            </button>
-            <button
-              type="button"
-              className="ghost"
-              onClick={() => void handleSaveTemplate()}
-              disabled={isMutating || !numericFieldsFilled}
-            >
-              {isMutating ? 'Saving…' : editingTemplateId ? 'Update Template' : 'Save to Library'}
-            </button>
-          </div>
         </section>
       </div>
     </form>

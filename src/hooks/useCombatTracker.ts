@@ -56,6 +56,7 @@ type TrackerAction =
   | { type: 'attack'; payload: AttackActionInput }
   | { type: 'heal'; payload: HealActionInput }
   | { type: 'set-active'; payload: { id: string | null } }
+  | { type: 'start-encounter' }
   | { type: 'advance' }
   | { type: 'rewind' }
   | { type: 'add-status'; payload: { id: string; status: StatusEffectInstance } }
@@ -247,7 +248,8 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
     }
     case 'add-combatant': {
       const combatants = sortCombatants([...state.combatants, action.payload]);
-      const activeCombatantId = combatants.length === 1 ? combatants[0].id : state.activeCombatantId;
+      const encounterStarted = Boolean(state.startedAt);
+      const activeCombatantId = encounterStarted ? state.activeCombatantId ?? combatants[0]?.id ?? null : combatants[0]?.id ?? null;
       const entry = createLogEntry(
         'combatant-add',
         `${action.payload.name} joined the encounter.`,
@@ -513,6 +515,28 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
         ...state,
         activeCombatantId: action.payload.id
       };
+    case 'start-encounter': {
+      if (state.combatants.length === 0) {
+        return state;
+      }
+      const combatants = sortCombatants(state.combatants);
+      const first = combatants[0] ?? null;
+      const entry = first
+        ? createLogEntry(
+            'turn',
+            `Encounter started. ${first.name} is up first.`,
+            state.round,
+            { combatantId: first.id }
+          )
+        : null;
+      return {
+        ...state,
+        combatants,
+        activeCombatantId: first?.id ?? null,
+        startedAt: state.startedAt ?? new Date().toISOString(),
+        log: appendLog(state.log, entry)
+      };
+    }
     case 'advance': {
       if (state.combatants.length === 0) return state;
       const sorted = sortCombatants(state.combatants);
@@ -1137,6 +1161,10 @@ export const useCombatTracker = (encounterId: string | null) => {
     dispatch({ type: 'set-active', payload: { id } });
   }, []);
 
+  const startEncounter = useCallback(() => {
+    dispatch({ type: 'start-encounter' });
+  }, []);
+
   const advanceTurn = useCallback(() => {
     dispatch({ type: 'advance' });
   }, []);
@@ -1208,6 +1236,7 @@ export const useCombatTracker = (encounterId: string | null) => {
       setDeathSaveCounts,
       clearDeathSaves,
       setActiveCombatant,
+      startEncounter,
       advanceTurn,
       rewindTurn,
       addStatus,
