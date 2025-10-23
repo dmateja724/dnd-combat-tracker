@@ -106,37 +106,41 @@ export const useDeathShowcase = ({
       return;
     }
 
-    const additions = unseenLogs
-      .map<DeathShowcaseQueueItem | null>((entry) => {
-        if (!entry.combatantId) {
-          return null;
-        }
-        const combatant = combatants.find((item) => item.id === entry.combatantId);
-        if (!combatant) {
-          return null;
-        }
-        const isPlayerOrAlly = combatant.type === 'player' || combatant.type === 'ally';
-        const isDeadStatus = combatant.deathSaves?.status === 'dead';
-        const isAtZeroHp = combatant.hp.current <= 0;
-        const shouldShowcase = isAtZeroHp && (!isPlayerOrAlly || isDeadStatus);
-        if (!shouldShowcase) {
-          return null;
-        }
-        return {
-          combatantSnapshot: combatant,
-          logEntry: entry
-        };
-      })
-      .filter((item): item is DeathShowcaseQueueItem => item !== null);
+    let hasNewSeenIds = false;
+    const additions: DeathShowcaseQueueItem[] = [];
+
+    unseenLogs.forEach((entry) => {
+      if (!seenIds.has(entry.id)) {
+        seenIds.add(entry.id);
+        hasNewSeenIds = true;
+      }
+      if (!entry.combatantId) {
+        return;
+      }
+      const combatant = combatants.find((item) => item.id === entry.combatantId);
+      if (!combatant) {
+        return;
+      }
+      const isPlayerOrAlly = combatant.type === 'player' || combatant.type === 'ally';
+      const isDeadStatus = combatant.deathSaves?.status === 'dead';
+      const isAtZeroHp = combatant.hp.current <= 0;
+      const shouldShowcase = isAtZeroHp && (!isPlayerOrAlly || isDeadStatus);
+      if (!shouldShowcase) {
+        return;
+      }
+      additions.push({
+        combatantSnapshot: combatant,
+        logEntry: entry
+      });
+    });
+
+    if (hasNewSeenIds) {
+      persistSeenIds(currentEncounterId, seenIds);
+    }
 
     if (additions.length === 0) {
       return;
     }
-
-    additions.forEach((item) => {
-      seenIds.add(item.logEntry.id);
-    });
-    persistSeenIds(currentEncounterId, seenIds);
 
     setQueue((current) => [...current, ...additions]);
   }, [combatants, log]);
