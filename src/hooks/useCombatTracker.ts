@@ -505,8 +505,28 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
       if (state.combatants.length === 0) return state;
       const sorted = sortCombatants(state.combatants);
       const currentIndex = sorted.findIndex((combatant) => combatant.id === state.activeCombatantId);
-      const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % sorted.length;
-      const wrapped = currentIndex !== -1 && nextIndex === 0;
+      const aliveIndices = sorted.reduce<number[]>((indices, combatant, index) => {
+        if (combatant.hp.current > 0) {
+          indices.push(index);
+        }
+        return indices;
+      }, []);
+      let nextIndex: number;
+      if (aliveIndices.length > 0) {
+        if (currentIndex === -1) {
+          nextIndex = aliveIndices[0];
+        } else {
+          const nextAlive = aliveIndices.find((index) => index > currentIndex);
+          if (nextAlive === undefined) {
+            nextIndex = aliveIndices[0];
+          } else {
+            nextIndex = nextAlive;
+          }
+        }
+      } else {
+        nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % sorted.length;
+      }
+      const wrapped = currentIndex !== -1 && nextIndex <= currentIndex;
       const decrementResult = wrapped
         ? decrementStatusDurations(sorted)
         : {
@@ -544,8 +564,31 @@ const trackerReducer = (state: TrackerState, action: TrackerAction): TrackerStat
       if (state.combatants.length === 0) return state;
       const sorted = sortCombatants(state.combatants);
       const currentIndex = sorted.findIndex((combatant) => combatant.id === state.activeCombatantId);
-      const nextIndex = currentIndex === -1 ? sorted.length - 1 : (currentIndex - 1 + sorted.length) % sorted.length;
-      const wrapped = currentIndex !== -1 && currentIndex === 0;
+      const aliveIndices = sorted.reduce<number[]>((indices, combatant, index) => {
+        if (combatant.hp.current > 0) {
+          indices.push(index);
+        }
+        return indices;
+      }, []);
+      let nextIndex: number;
+      let wrapped = false;
+      if (aliveIndices.length > 0) {
+        if (currentIndex === -1) {
+          nextIndex = aliveIndices[aliveIndices.length - 1];
+        } else {
+          const previousAliveCandidates = aliveIndices.filter((index) => index < currentIndex);
+          if (previousAliveCandidates.length === 0) {
+            nextIndex = aliveIndices[aliveIndices.length - 1];
+            wrapped = true;
+          } else {
+            nextIndex = previousAliveCandidates[previousAliveCandidates.length - 1];
+          }
+        }
+      } else {
+        nextIndex =
+          currentIndex === -1 ? sorted.length - 1 : (currentIndex - 1 + sorted.length) % sorted.length;
+        wrapped = currentIndex !== -1 && currentIndex === 0;
+      }
       const nextRound = wrapped && state.round > 1 ? state.round - 1 : state.round;
       const nextCombatant = sorted[nextIndex];
       const entry = nextCombatant
