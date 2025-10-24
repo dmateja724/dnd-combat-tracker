@@ -1,7 +1,7 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { useEncounterContext } from '../context/EncounterContext';
 import { useCombatantLibrary } from '../context/CombatantLibraryContext';
-import { restoreAccountFromFile } from '../utils/accountBackup';
+import { useAccountBackup } from '../hooks/useAccountBackup';
 
 interface EncounterManagerProps {
   onClose?: () => void;
@@ -23,9 +23,13 @@ const EncounterManager = ({ onClose, disableClose = false }: EncounterManagerPro
   const [encounterName, setEncounterName] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isImportingAccount, setIsImportingAccount] = useState(false);
-  const accountImportInputRef = useRef<HTMLInputElement | null>(null);
   const { refresh: refreshCombatantLibrary } = useCombatantLibrary();
+  const accountImportInputRef = useRef<HTMLInputElement | null>(null);
+  const { isImporting: isImportingAccount, handleFileInputChange: handleAccountBackupFileChange } = useAccountBackup({
+    refreshCombatantLibrary,
+    refreshEncounters,
+    selectEncounter
+  });
 
   useEffect(() => {
     void refreshEncounters();
@@ -86,43 +90,7 @@ const EncounterManager = ({ onClose, disableClose = false }: EncounterManagerPro
   };
 
   const handleAccountImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) {
-      return;
-    }
-    if (typeof window === 'undefined') {
-      console.warn('Import is only available in the browser.');
-      return;
-    }
-    const confirmed = window.confirm(
-      'Importing a backup will replace your current combatant library and encounters. Continue?'
-    );
-    if (!confirmed) {
-      return;
-    }
-
-    setIsImportingAccount(true);
-    selectEncounter(null);
-    try {
-      const { summary, warnings } = await restoreAccountFromFile(file, {
-        refreshCombatantLibrary,
-        refreshEncounters,
-        selectEncounter
-      });
-
-      if (warnings.length > 0) {
-        window.alert(`${summary}\n\nWarnings:\n- ${warnings.join('\n- ')}`);
-      } else {
-        window.alert(summary);
-      }
-    } catch (error) {
-      console.error('Failed to import account archive', error);
-      const message = error instanceof Error ? error.message : 'Unknown error occurred during import.';
-      window.alert('Could not import account: ' + message);
-    } finally {
-      setIsImportingAccount(false);
-    }
+    await handleAccountBackupFileChange(event);
   };
 
   return (
