@@ -4,6 +4,8 @@ import { Combatant, StatusEffectTemplate } from '../types';
 import { UpdateCombatantInput } from '../hooks/useCombatTracker';
 import Modal from './Modal';
 import { useCombatantLibrary } from '../context/CombatantLibraryContext';
+import AvatarMedia from './AvatarMedia';
+import { isImageIcon } from '../utils/iconHelpers';
 
 interface CombatantCardProps {
   combatant: Combatant;
@@ -234,8 +236,12 @@ const CombatantCard = ({
         </div>
       ) : null}
       <header className="card-head">
-        <button className="avatar" onClick={onCenter} type="button">
-          <span>{combatant.icon}</span>
+        <button
+          className={clsx('avatar', isImageIcon(combatant.icon) ? 'has-image' : 'has-emoji')}
+          onClick={onCenter}
+          type="button"
+        >
+          <AvatarMedia icon={combatant.icon} />
         </button>
         <div className="identity">
           <h3>{combatant.name}</h3>
