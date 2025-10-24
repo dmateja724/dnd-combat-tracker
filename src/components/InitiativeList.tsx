@@ -1,4 +1,7 @@
+import clsx from 'clsx';
 import { Combatant } from '../types';
+import AvatarMedia from './AvatarMedia';
+import { isImageIcon } from '../utils/iconHelpers';
 
 interface InitiativeListProps {
   combatants: Combatant[];
@@ -26,7 +29,9 @@ const InitiativeList = ({ combatants, activeId, onSelect, registerItemRef }: Ini
           >
             <button type="button" className="initiative-row" onClick={() => onSelect(combatant.id)}>
               <span className="order">{index + 1}</span>
-              <span className="icon">{combatant.icon}</span>
+              <span className={clsx('icon', isImageIcon(combatant.icon) ? 'has-image' : 'has-emoji')}>
+                <AvatarMedia icon={combatant.icon} />
+              </span>
               <div className="info">
                 <strong>{combatant.name}</strong>
                 <span className="meta">

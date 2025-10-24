@@ -1,5 +1,7 @@
 import clsx from 'clsx';
 import { Combatant } from '../types';
+import AvatarMedia from './AvatarMedia';
+import { isImageIcon } from '../utils/iconHelpers';
 
 const typeToLabel: Record<Combatant['type'], string> = {
   player: 'Adventurer',
@@ -55,8 +57,11 @@ const ViewerCombatantCard = ({ combatant, isActive }: ViewerCombatantCardProps) 
         </div>
       ) : null}
       <header className="card-head viewer-card-head">
-        <div className="avatar viewer-avatar" aria-hidden="true">
-          <span>{combatant.icon}</span>
+        <div
+          className={clsx('avatar viewer-avatar', isImageIcon(combatant.icon) ? 'has-image' : 'has-emoji')}
+          aria-hidden="true"
+        >
+          <AvatarMedia icon={combatant.icon} />
         </div>
         <div className="identity">
           <h3>{combatant.name}</h3>

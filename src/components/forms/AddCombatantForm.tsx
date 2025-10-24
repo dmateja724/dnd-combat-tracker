@@ -1,7 +1,10 @@
-import { FormEvent, useMemo, useState } from 'react';
+import clsx from 'clsx';
+import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
 import { AddCombatantInput } from '../../hooks/useCombatTracker';
 import { useCombatantLibrary } from '../../context/CombatantLibraryContext';
 import type { CombatantTemplate, CombatantTemplateInput } from '../../types';
+import AvatarMedia from '../AvatarMedia';
+import { isImageIcon } from '../../utils/iconHelpers';
 
 interface AddCombatantFormProps {
   onCreate: (payload: AddCombatantInput, options?: { stayOpen?: boolean }) => void;
@@ -12,22 +15,35 @@ interface AddCombatantFormProps {
   startEncounterDisabled?: boolean;
 }
 
+type IconMode = 'emoji' | 'image';
+
 type FormState = {
   name: string;
   type: AddCombatantInput['type'];
   initiative: string;
   maxHp: string;
   ac: string;
-  icon: string;
+  iconMode: IconMode;
+  emojiIcon: string;
+  imageIcon: string | null;
   note: string;
 };
 
 const defaultIcon = '⚔️';
+const MAX_ICON_BYTES = 500 * 1024;
+
+const resolveIcon = (state: FormState) => {
+  if (state.iconMode === 'image') {
+    return state.imageIcon?.trim() ?? '';
+  }
+  return state.emojiIcon.trim();
+};
 
 const toCombatantInput = (state: FormState): AddCombatantInput => {
   const parsedInitiative = Number.parseInt(state.initiative, 10);
   const parsedMaxHp = Number.parseInt(state.maxHp, 10);
   const parsedAc = Number.parseInt(state.ac, 10);
+  const iconValue = resolveIcon(state) || defaultIcon;
 
   return {
     name: state.name.trim(),
@@ -35,7 +51,7 @@ const toCombatantInput = (state: FormState): AddCombatantInput => {
     initiative: Number.isFinite(parsedInitiative) ? parsedInitiative : 0,
     maxHp: Math.max(1, Number.isFinite(parsedMaxHp) ? parsedMaxHp : 1),
     ac: Number.isFinite(parsedAc) ? parsedAc : undefined,
-    icon: state.icon,
+    icon: iconValue,
     note: state.note.trim() || undefined
   };
 };
@@ -44,6 +60,7 @@ const toTemplateInput = (state: FormState): CombatantTemplateInput => {
   const parsedInitiative = Number.parseInt(state.initiative, 10);
   const parsedMaxHp = Number.parseInt(state.maxHp, 10);
   const parsedAc = Number.parseInt(state.ac, 10);
+  const iconValue = resolveIcon(state) || defaultIcon;
 
   return {
     name: state.name.trim(),
@@ -51,7 +68,7 @@ const toTemplateInput = (state: FormState): CombatantTemplateInput => {
     defaultInitiative: Number.isFinite(parsedInitiative) ? parsedInitiative : 0,
     maxHp: Math.max(1, Number.isFinite(parsedMaxHp) ? parsedMaxHp : 1),
     ac: Number.isFinite(parsedAc) ? parsedAc : null,
-    icon: state.icon,
+    icon: iconValue,
     note: state.note.trim() || undefined
   };
 };
@@ -71,7 +88,9 @@ const AddCombatantForm = ({
       initiative: '',
       maxHp: '',
       ac: '',
-      icon: iconOptions[0]?.icon ?? defaultIcon,
+      iconMode: 'emoji',
+      emojiIcon: iconOptions[0]?.icon ?? defaultIcon,
+      imageIcon: null,
       note: ''
     }),
     [iconOptions]
@@ -80,9 +99,12 @@ const AddCombatantForm = ({
   const [formData, setFormData] = useState<FormState>(initialState);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [iconError, setIconError] = useState<string | null>(null);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const numericFieldsFilled =
     formData.initiative.trim() !== '' && formData.maxHp.trim() !== '' && formData.ac.trim() !== '';
+  const hasPortrait = Boolean(resolveIcon(formData));
+  const canSubmit = numericFieldsFilled && hasPortrait;
 
   const {
     templates,
@@ -108,11 +130,20 @@ const AddCombatantForm = ({
       setLocalError('Enter initiative, max HP, and AC before adding to the encounter.');
       return;
     }
+    if (!hasPortrait) {
+      if (formData.iconMode === 'image' && !formData.imageIcon) {
+        setIconError('Upload an image or switch to an emoji.');
+      }
+      setLocalError('Select a portrait before adding to the encounter.');
+      return;
+    }
     setLocalError(null);
+    setIconError(null);
     onCreate(toCombatantInput(formData));
     setFormData(initialState);
     setEditingTemplateId(null);
     setFeedback(null);
+    setIconError(null);
   };
 
   const handleApplyTemplate = (template: CombatantTemplate, stayOpen = false) => {
@@ -133,17 +164,22 @@ const AddCombatantForm = ({
 
   const handleFillFromTemplate = (template: CombatantTemplate) => {
     setEditingTemplateId(null);
-    setFormData({
+    const templateUsesImage = isImageIcon(template.icon);
+    const fallbackEmoji = iconOptions[0]?.icon ?? defaultIcon;
+    setFormData((prev) => ({
       name: template.name,
       type: template.type,
       initiative: String(template.defaultInitiative ?? ''),
       maxHp: String(template.maxHp ?? ''),
       ac: template.ac !== null && template.ac !== undefined ? String(template.ac) : '',
-      icon: template.icon,
+      iconMode: templateUsesImage ? 'image' : 'emoji',
+      emojiIcon: templateUsesImage ? prev.emojiIcon || fallbackEmoji : template.icon || fallbackEmoji,
+      imageIcon: templateUsesImage ? template.icon : prev.imageIcon,
       note: template.note ?? ''
-    });
+    }));
     setFeedback('Template values loaded into the form.');
     setLocalError(null);
+    setIconError(null);
   };
 
   const handleEditTemplate = (template: CombatantTemplate) => {
@@ -156,6 +192,7 @@ const AddCombatantForm = ({
     setEditingTemplateId(null);
     setFeedback('Edit canceled.');
     setLocalError(null);
+    setIconError(null);
   };
 
   const handleSaveTemplate = async () => {
@@ -167,8 +204,16 @@ const AddCombatantForm = ({
       setLocalError('Enter initiative, max HP, and AC before saving to the library.');
       return;
     }
+    if (!hasPortrait) {
+      if (formData.iconMode === 'image' && !formData.imageIcon) {
+        setIconError('Upload an image or switch to an emoji.');
+      }
+      setLocalError('Select a portrait before saving to the library.');
+      return;
+    }
     setLocalError(null);
     setFeedback(null);
+    setIconError(null);
     const payload = toTemplateInput(formData);
     if (editingTemplateId) {
       const updated = await updateTemplate(editingTemplateId, payload);
@@ -185,6 +230,59 @@ const AddCombatantForm = ({
         setLocalError('Could not save combatant to the library.');
       }
     }
+  };
+
+  const handleSetIconMode = (mode: IconMode) => {
+    setFormData((prev) => (prev.iconMode === mode ? prev : { ...prev, iconMode: mode }));
+    setIconError(null);
+    setLocalError(null);
+    setFeedback(null);
+  };
+
+  const handleIconFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const file = input.files?.[0];
+    const resetInput = () => {
+      input.value = '';
+    };
+    if (!file) {
+      setFormData((prev) => ({ ...prev, imageIcon: null }));
+      setIconError(null);
+      resetInput();
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      setIconError('Select an image file (PNG or JPG).');
+      resetInput();
+      return;
+    }
+    if (file.size > MAX_ICON_BYTES) {
+      setIconError('Image must be 500 KB or smaller.');
+      resetInput();
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === 'string' && result.startsWith('data:image')) {
+        setFormData((prev) => ({ ...prev, imageIcon: result }));
+        setIconError(null);
+        setLocalError(null);
+        setFeedback(null);
+      } else {
+        setIconError('Unable to read image file.');
+      }
+    };
+    reader.onerror = () => {
+      setIconError('Unable to read image file.');
+    };
+    reader.readAsDataURL(file);
+    resetInput();
+  };
+
+  const handleClearImage = () => {
+    setFormData((prev) => ({ ...prev, imageIcon: null }));
+    setIconError(null);
   };
 
   return (
@@ -233,14 +331,14 @@ const AddCombatantForm = ({
         </div>
         <div className="add-combatant-toolbar__spacer" />
         <div className="add-combatant-toolbar__actions">
-          <button type="submit" className="primary add-combatant-toolbar__button" disabled={!numericFieldsFilled}>
+          <button type="submit" className="primary add-combatant-toolbar__button" disabled={!canSubmit}>
             Add to Encounter
           </button>
           <button
             type="button"
             className="ghost add-combatant-toolbar__button"
             onClick={() => void handleSaveTemplate()}
-            disabled={isMutating || !numericFieldsFilled}
+            disabled={isMutating || !canSubmit}
           >
             {isMutating ? 'Saving…' : editingTemplateId ? 'Update Template' : 'Save to Library'}
           </button>
@@ -267,7 +365,7 @@ const AddCombatantForm = ({
                       onClick={() => handleFillFromTemplate(template)}
                       title="Load into form"
                     >
-                      <span>{template.icon}</span>
+                      <AvatarMedia icon={template.icon} />
                     </button>
                     <div className="saved-combatant-info">
                       <strong>{template.name}</strong>
@@ -396,23 +494,69 @@ const AddCombatantForm = ({
             </label>
           </div>
 
-          <label>
-            Icon
-            <select
-              value={formData.icon}
-              onChange={(event) => {
-                setFormData((prev) => ({ ...prev, icon: event.target.value }));
-                setFeedback(null);
-                setLocalError(null);
-              }}
-            >
-              {iconOptions.map((option) => (
-                <option key={option.id} value={option.icon}>
-                  {option.icon} {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="portrait-field">
+            <div className="portrait-head">
+              <span className="portrait-label">Portrait</span>
+              <div className="portrait-mode-toggle" role="group" aria-label="Portrait option">
+                <button
+                  type="button"
+                  className={clsx('portrait-mode-button', { active: formData.iconMode === 'emoji' })}
+                  onClick={() => handleSetIconMode('emoji')}
+                >
+                  Emoji
+                </button>
+                <button
+                  type="button"
+                  className={clsx('portrait-mode-button', { active: formData.iconMode === 'image' })}
+                  onClick={() => handleSetIconMode('image')}
+                >
+                  Image
+                </button>
+              </div>
+            </div>
+            {formData.iconMode === 'emoji' ? (
+              <select
+                value={formData.emojiIcon}
+                onChange={(event) => {
+                  setFormData((prev) => ({ ...prev, emojiIcon: event.target.value }));
+                  setFeedback(null);
+                  setLocalError(null);
+                  setIconError(null);
+                }}
+              >
+                {iconOptions.map((option) => (
+                  <option key={option.id} value={option.icon}>
+                    {option.icon} {option.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="portrait-upload">
+                <div className="portrait-preview" aria-hidden={formData.imageIcon ? undefined : true}>
+                  {formData.imageIcon ? (
+                    <AvatarMedia
+                      icon={formData.imageIcon}
+                      decorative={false}
+                      label={(formData.name || 'Combatant') + ' portrait preview'}
+                    />
+                  ) : (
+                    <span className="portrait-placeholder">No image selected</span>
+                  )}
+                </div>
+                <label className="portrait-upload-button">
+                  <span>{formData.imageIcon ? 'Replace Image' : 'Select Image'}</span>
+                  <input type="file" accept="image/*" onChange={handleIconFileChange} />
+                </label>
+                {formData.imageIcon ? (
+                  <button type="button" className="ghost portrait-remove-button" onClick={handleClearImage}>
+                    Remove Image
+                  </button>
+                ) : null}
+                <p className="form-hint">PNG or JPG up to 500 KB.</p>
+                {iconError ? <p className="form-warning">{iconError}</p> : null}
+              </div>
+            )}
+          </div>
 
           <label>
             Notes
