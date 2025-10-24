@@ -1130,8 +1130,9 @@ button {
   grid-template-columns: auto minmax(0, 1fr);
 }
 
-.card-head > .avatar {
+.card-head > button.avatar {
   grid-row: 1 / span 2;
+  padding: 0;
 }
 
 .card-head .identity {
@@ -1163,6 +1164,16 @@ button {
     grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
+  .card-head > button.avatar {
+    grid-row: auto;
+    align-self: stretch;
+  }
+
+  .card-head > button.avatar.has-image {
+    height: 100%;
+    min-height: 96px;
+  }
+
   .card-head .card-actions {
     grid-column: auto;
     flex-direction: column;
@@ -1182,7 +1193,7 @@ button {
     align-items: center;
   }
 
-  .card-head > .avatar {
+  .card-head > button.avatar {
     grid-row: auto;
   }
 
