@@ -1,11 +1,8 @@
 import JSZip from 'jszip';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  exportAccountArchive,
-  importAccountArchive,
-  restoreAccountFromFile
-} from './accountBackup';
-import type { CombatantTemplate, EncounterState, EncounterSummary } from '../types';
+import { exportAccountArchive, importAccountArchive, restoreAccountFromFile } from './accountBackup';
+import type { CombatantTemplate, EncounterState } from '../types';
+import type { EncounterSummary } from '../data/encounterDb';
 
 const mockTemplates: CombatantTemplate[] = [
   {
@@ -50,28 +47,33 @@ const encounterState: EncounterState = {
   log: []
 };
 
-const listCombatantTemplates = vi.fn(async () => mockTemplates);
-const deleteCombatantTemplate = vi.fn(async () => true);
-const createCombatantTemplate = vi.fn(async () => mockTemplates[0]);
+type CombatantLibraryModule = typeof import('../data/combatantLibrary');
+type EncounterDbModule = typeof import('../data/encounterDb');
 
-const listEncounters = vi.fn(async () => [encounterSummary()]);
-const deleteEncounter = vi.fn(async () => true);
-const createEncounter = vi.fn(async (name?: string) => encounterSummary({ id: `enc-${name}`, name: name ?? 'Imported' }));
-const loadEncounter = vi.fn(async () => encounterState);
-const saveEncounter = vi.fn(async () => undefined);
+const listCombatantTemplates = vi.fn<CombatantLibraryModule['listCombatantTemplates']>(async () => mockTemplates);
+const deleteCombatantTemplate = vi.fn<CombatantLibraryModule['deleteCombatantTemplate']>(async () => true);
+const createCombatantTemplate = vi.fn<CombatantLibraryModule['createCombatantTemplate']>(async () => mockTemplates[0]);
+
+const listEncounters = vi.fn<EncounterDbModule['listEncounters']>(async () => [encounterSummary()]);
+const deleteEncounter = vi.fn<EncounterDbModule['deleteEncounter']>(async () => true);
+const createEncounter = vi.fn<EncounterDbModule['createEncounter']>(async (name?: string) =>
+  encounterSummary({ id: `enc-${name}`, name: name ?? 'Imported' })
+);
+const loadEncounter = vi.fn<EncounterDbModule['loadEncounter']>(async () => encounterState);
+const saveEncounter = vi.fn<EncounterDbModule['saveEncounter']>(async () => undefined);
 
 vi.mock('../data/combatantLibrary', () => ({
-  listCombatantTemplates: (...args: unknown[]) => listCombatantTemplates(...args),
-  deleteCombatantTemplate: (...args: unknown[]) => deleteCombatantTemplate(...args),
-  createCombatantTemplate: (...args: unknown[]) => createCombatantTemplate(...args)
+  listCombatantTemplates,
+  deleteCombatantTemplate,
+  createCombatantTemplate
 }));
 
 vi.mock('../data/encounterDb', () => ({
-  listEncounters: (...args: unknown[]) => listEncounters(...args),
-  deleteEncounter: (...args: unknown[]) => deleteEncounter(...args),
-  createEncounter: (...args: unknown[]) => createEncounter(...args),
-  loadEncounter: (...args: unknown[]) => loadEncounter(...args),
-  saveEncounter: (...args: unknown[]) => saveEncounter(...args)
+  listEncounters,
+  deleteEncounter,
+  createEncounter,
+  loadEncounter,
+  saveEncounter
 }));
 
 const buildArchive = async (options?: { invalidTemplate?: boolean; brokenEncounter?: boolean }) => {
@@ -131,7 +133,7 @@ const buildArchive = async (options?: { invalidTemplate?: boolean; brokenEncount
     })
   );
 
-  const data = await zip.generateAsync({ type: 'uint8array' });
+  const data = await zip.generateAsync({ type: 'arraybuffer' });
   return new File([data], 'backup.zip', { type: 'application/zip' });
 };
 
@@ -231,7 +233,7 @@ describe('accountBackup utilities', () => {
     const zip = new JSZip();
     const encounterFolder = zip.folder('encounters');
     encounterFolder?.file('enc.json', JSON.stringify({ version: 1, encounter: encounterSummary(), state: encounterState }));
-    const data = await zip.generateAsync({ type: 'uint8array' });
+    const data = await zip.generateAsync({ type: 'arraybuffer' });
     const file = new File([data], 'invalid.zip', { type: 'application/zip' });
 
     await expect(importAccountArchive(file)).rejects.toThrow(/combatant-library.json/);

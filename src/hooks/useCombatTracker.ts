@@ -3,7 +3,7 @@ import { nanoid } from 'nanoid';
 import { STATUS_EFFECT_LIBRARY } from '../data/statusEffects';
 import { COMBATANT_ICON_LIBRARY } from '../data/combatantIcons';
 import { loadEncounter, saveEncounter } from '../data/encounterDb';
-import type { Combatant, EncounterState, StatusEffectTemplate } from '../types';
+import type { Combatant, EncounterState, StatusEffectInstance, StatusEffectTemplate } from '../types';
 import { defaultEncounter, sortCombatants, trackerReducer } from './useCombatTrackerReducer';
 import type { AddCombatantInput, UpdateCombatantInput, AttackActionInput, HealActionInput } from './useCombatTrackerReducer';
 

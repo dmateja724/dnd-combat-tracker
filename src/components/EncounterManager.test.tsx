@@ -43,6 +43,10 @@ vi.mock('../context/CombatantLibraryContext', () => ({
   useCombatantLibrary: () => combatantLibraryMock
 }));
 
+let confirmMock: ReturnType<typeof vi.fn>;
+let promptMock: ReturnType<typeof vi.fn>;
+let alertMock: ReturnType<typeof vi.fn>;
+
 describe('EncounterManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -73,12 +77,12 @@ describe('EncounterManager', () => {
         errors: []
       }
     });
-    // @ts-expect-error jsdom globals
-    window.confirm = vi.fn().mockReturnValue(true);
-    // @ts-expect-error jsdom globals
-    window.prompt = vi.fn();
-    // @ts-expect-error jsdom globals
-    window.alert = vi.fn();
+    confirmMock = vi.fn().mockReturnValue(true);
+    promptMock = vi.fn().mockReturnValue(null);
+    alertMock = vi.fn();
+    window.confirm = confirmMock as unknown as typeof window.confirm;
+    window.prompt = promptMock as unknown as typeof window.prompt;
+    window.alert = alertMock as unknown as typeof window.alert;
   });
 
   it('refreshes encounters on mount', async () => {
@@ -211,8 +215,7 @@ describe('EncounterManager', () => {
         updatedAt: new Date().toISOString()
       }
     ];
-    // @ts-expect-error test override
-    window.prompt = vi.fn().mockReturnValue('Updated Name');
+    promptMock.mockReturnValue('Updated Name');
 
     render(<EncounterManager />);
 
@@ -230,8 +233,7 @@ describe('EncounterManager', () => {
         updatedAt: new Date().toISOString()
       }
     ];
-    // @ts-expect-error test override
-    window.prompt = vi.fn().mockReturnValue(null);
+    promptMock.mockReturnValue(null);
 
     render(<EncounterManager />);
 
@@ -249,8 +251,7 @@ describe('EncounterManager', () => {
         updatedAt: new Date().toISOString()
       }
     ];
-    // @ts-expect-error test override
-    window.prompt = vi.fn().mockReturnValue('Same Name');
+    promptMock.mockReturnValue('Same Name');
 
     render(<EncounterManager />);
 
@@ -291,8 +292,7 @@ describe('EncounterManager', () => {
         updatedAt: new Date().toISOString()
       }
     ];
-    // @ts-expect-error test override
-    window.confirm = vi.fn().mockReturnValue(false);
+    confirmMock.mockReturnValue(false);
 
     render(<EncounterManager />);
 
@@ -355,8 +355,7 @@ describe('EncounterManager', () => {
 
   it('cancels account import when user declines confirm', async () => {
     const file = new File(['zip'], 'backup.zip', { type: 'application/zip' });
-    // @ts-expect-error test override
-    window.confirm = vi.fn().mockReturnValue(false);
+    confirmMock.mockReturnValue(false);
     render(<EncounterManager />);
 
     const hiddenInput = document.querySelector('input[type="file"]') as HTMLInputElement;

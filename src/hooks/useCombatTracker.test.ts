@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { EncounterState } from '../types';
 import { useCombatTracker } from './useCombatTracker';
 
 const { loadEncounterMock, saveEncounterMock } = vi.hoisted(() => ({
@@ -120,7 +121,7 @@ describe('useCombatTracker', () => {
   });
 
   it('handles full combat lifecycle with persistence and broadcasts', async () => {
-    const sampleState = {
+    const sampleState: EncounterState = {
       combatants: [
         {
           id: 'alpha',
@@ -143,7 +144,6 @@ describe('useCombatTracker', () => {
           ac: 13,
           icon: '⚔️',
           statuses: [],
-          note: undefined,
           deathSaves: null
         }
       ],
@@ -154,15 +154,17 @@ describe('useCombatTracker', () => {
     };
     loadEncounterMock.mockResolvedValueOnce(sampleState);
 
-    const createdChannels: any[] = [];
+    const createdChannels: BroadcastChannel[] = [];
     const OriginalBroadcastChannel = global.BroadcastChannel;
-    // @ts-expect-error extend mock channel for tracking
-    global.BroadcastChannel = class extends OriginalBroadcastChannel {
-      constructor(name: string) {
-        super(name);
-        createdChannels.push(this);
-      }
-    };
+    if (OriginalBroadcastChannel) {
+      const TrackingBroadcastChannel = class extends OriginalBroadcastChannel {
+        constructor(name: string) {
+          super(name);
+          createdChannels.push(this);
+        }
+      };
+      global.BroadcastChannel = TrackingBroadcastChannel as typeof BroadcastChannel;
+    }
 
     try {
       const { result } = renderHook(() => useCombatTracker('encounter-1'));
@@ -299,7 +301,9 @@ describe('useCombatTracker', () => {
       });
       expect(result.current.state.round).toBe(5);
     } finally {
-      global.BroadcastChannel = OriginalBroadcastChannel;
+      if (OriginalBroadcastChannel) {
+        global.BroadcastChannel = OriginalBroadcastChannel;
+      }
     }
   });
 });
