@@ -36,6 +36,15 @@ export default defineConfig(() => {
           changeOrigin: true
         }
       }
+    },
+    test: {
+      environment: 'jsdom',
+      setupFiles: './src/test/setup.ts',
+      css: true,
+      globals: true,
+      coverage: {
+        provider: 'v8'
+      }
     }
   };
 });
