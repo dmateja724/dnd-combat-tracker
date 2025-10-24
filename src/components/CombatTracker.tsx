@@ -3,6 +3,7 @@ import type { ChangeEvent, CSSProperties } from 'react';
 import clsx from 'clsx';
 import { useCombatTracker } from '../hooks/useCombatTracker';
 import { useDeathShowcase } from '../hooks/useDeathShowcase';
+import { useAccountBackup } from '../hooks/useAccountBackup';
 import CombatantCard from './CombatantCard';
 import DeathShowcase from './DeathShowcase';
 import ViewerCombatantCard from './ViewerCombatantCard';
@@ -16,7 +17,6 @@ import { useEncounterContext } from '../context/EncounterContext';
 import EncounterManager from './EncounterManager';
 import { useCombatantLibrary } from '../context/CombatantLibraryContext';
 import { APP_VERSION } from '../version';
-import { exportAccountArchive, restoreAccountFromFile } from '../utils/accountBackup';
 
 type CarouselItemStyle = CSSProperties & {
   '--offset'?: number;
@@ -38,9 +38,17 @@ const CombatTracker = () => {
   const accountButtonRef = useRef<HTMLButtonElement | null>(null);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
-  const [isExportingAccount, setIsExportingAccount] = useState(false);
-  const [isImportingAccount, setIsImportingAccount] = useState(false);
   const accountImportInputRef = useRef<HTMLInputElement | null>(null);
+  const {
+    isExporting: isExportingAccount,
+    isImporting: isImportingAccount,
+    exportAccount: exportAccountBackup,
+    handleFileInputChange: handleAccountBackupFileChange
+  } = useAccountBackup({
+    refreshCombatantLibrary,
+    refreshEncounters,
+    selectEncounter
+  });
   const [deathSaveDecisionQueue, setDeathSaveDecisionQueue] = useState<string[]>([]);
   const previousHpRef = useRef<Map<string, number>>(new Map());
   const autoOpenedEncounterRef = useRef<string | null>(null);
@@ -278,29 +286,8 @@ const CombatTracker = () => {
   const handleExportAccount = async () => {
     if (typeof window === 'undefined') return;
     if (isExportingAccount) return;
-    setIsExportingAccount(true);
     setIsAccountMenuOpen(false);
-    try {
-      const result = await exportAccountArchive();
-      const url = URL.createObjectURL(result.blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = result.fileName;
-      anchor.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      if (result.skippedEncounters.length > 0) {
-        window.alert(
-          `Export completed with warnings. Skipped ${result.skippedEncounters.length} encounter` +
-            `${result.skippedEncounters.length === 1 ? '' : 's'} during export.`
-        );
-      }
-    } catch (error) {
-      console.error('Failed to export account archive', error);
-      const message = error instanceof Error ? error.message : 'Unknown error occurred during export.';
-      window.alert('Could not export account: ' + message);
-    } finally {
-      setIsExportingAccount(false);
-    }
+    await exportAccountBackup();
   };
 
   const handleImportAccountClick = () => {
@@ -312,44 +299,8 @@ const CombatTracker = () => {
   };
 
   const handleAccountImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) {
-      return;
-    }
-    if (typeof window === 'undefined') {
-      console.warn('Import is only available in the browser.');
-      return;
-    }
-    const confirmed = window.confirm(
-      'Importing a backup will replace your current combatant library and encounters. Continue?'
-    );
-    if (!confirmed) {
-      return;
-    }
-
-    setIsImportingAccount(true);
     setIsAccountMenuOpen(false);
-    selectEncounter(null);
-    try {
-      const { summary, warnings } = await restoreAccountFromFile(file, {
-        refreshCombatantLibrary,
-        refreshEncounters,
-        selectEncounter
-      });
-
-      if (warnings.length > 0) {
-        window.alert(`${summary}\n\nWarnings:\n- ${warnings.join('\n- ')}`);
-      } else {
-        window.alert(summary);
-      }
-    } catch (error) {
-      console.error('Failed to import account archive', error);
-      const message = error instanceof Error ? error.message : 'Unknown error occurred during import.';
-      window.alert('Could not import account: ' + message);
-    } finally {
-      setIsImportingAccount(false);
-    }
+    await handleAccountBackupFileChange(event);
   };
 
 
