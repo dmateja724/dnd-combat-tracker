@@ -50,31 +50,64 @@ const encounterState: EncounterState = {
 type CombatantLibraryModule = typeof import('../data/combatantLibrary');
 type EncounterDbModule = typeof import('../data/encounterDb');
 
-const listCombatantTemplates = vi.fn<CombatantLibraryModule['listCombatantTemplates']>(async () => mockTemplates);
-const deleteCombatantTemplate = vi.fn<CombatantLibraryModule['deleteCombatantTemplate']>(async () => true);
-const createCombatantTemplate = vi.fn<CombatantLibraryModule['createCombatantTemplate']>(async () => mockTemplates[0]);
+const combatantLibraryMocks = vi.hoisted(() => {
+  const listCombatantTemplates = vi.fn<
+    Parameters<CombatantLibraryModule['listCombatantTemplates']>,
+    ReturnType<CombatantLibraryModule['listCombatantTemplates']>
+  >(async () => mockTemplates);
+  const deleteCombatantTemplate = vi.fn<
+    Parameters<CombatantLibraryModule['deleteCombatantTemplate']>,
+    ReturnType<CombatantLibraryModule['deleteCombatantTemplate']>
+  >(async () => true);
+  const createCombatantTemplate = vi.fn<
+    Parameters<CombatantLibraryModule['createCombatantTemplate']>,
+    ReturnType<CombatantLibraryModule['createCombatantTemplate']>
+  >(async () => mockTemplates[0]);
 
-const listEncounters = vi.fn<EncounterDbModule['listEncounters']>(async () => [encounterSummary()]);
-const deleteEncounter = vi.fn<EncounterDbModule['deleteEncounter']>(async () => true);
-const createEncounter = vi.fn<EncounterDbModule['createEncounter']>(async (name?: string) =>
-  encounterSummary({ id: `enc-${name}`, name: name ?? 'Imported' })
-);
-const loadEncounter = vi.fn<EncounterDbModule['loadEncounter']>(async () => encounterState);
-const saveEncounter = vi.fn<EncounterDbModule['saveEncounter']>(async () => undefined);
+  return {
+    listCombatantTemplates,
+    deleteCombatantTemplate,
+    createCombatantTemplate
+  };
+});
 
-vi.mock('../data/combatantLibrary', () => ({
-  listCombatantTemplates,
-  deleteCombatantTemplate,
-  createCombatantTemplate
-}));
+const encounterDbMocks = vi.hoisted(() => {
+  const listEncounters = vi.fn<
+    Parameters<EncounterDbModule['listEncounters']>,
+    ReturnType<EncounterDbModule['listEncounters']>
+  >(async () => [encounterSummary()]);
+  const deleteEncounter = vi.fn<
+    Parameters<EncounterDbModule['deleteEncounter']>,
+    ReturnType<EncounterDbModule['deleteEncounter']>
+  >(async () => true);
+  const createEncounter = vi.fn<
+    Parameters<EncounterDbModule['createEncounter']>,
+    ReturnType<EncounterDbModule['createEncounter']>
+  >(async (name?: string) => encounterSummary({ id: `enc-${name}`, name: name ?? 'Imported' }));
+  const loadEncounter = vi.fn<
+    Parameters<EncounterDbModule['loadEncounter']>,
+    ReturnType<EncounterDbModule['loadEncounter']>
+  >(async () => encounterState);
+  const saveEncounter = vi.fn<
+    Parameters<EncounterDbModule['saveEncounter']>,
+    ReturnType<EncounterDbModule['saveEncounter']>
+  >(async () => undefined);
 
-vi.mock('../data/encounterDb', () => ({
-  listEncounters,
-  deleteEncounter,
-  createEncounter,
-  loadEncounter,
-  saveEncounter
-}));
+  return {
+    listEncounters,
+    deleteEncounter,
+    createEncounter,
+    loadEncounter,
+    saveEncounter
+  };
+});
+
+vi.mock('../data/combatantLibrary', () => combatantLibraryMocks);
+
+vi.mock('../data/encounterDb', () => encounterDbMocks);
+
+const { listCombatantTemplates, deleteCombatantTemplate, createCombatantTemplate } = combatantLibraryMocks;
+const { listEncounters, deleteEncounter, createEncounter, loadEncounter, saveEncounter } = encounterDbMocks;
 
 const buildArchive = async (options?: { invalidTemplate?: boolean; brokenEncounter?: boolean }) => {
   const zip = new JSZip();
